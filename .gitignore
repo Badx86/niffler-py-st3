@@ -40,3 +40,16 @@ out/
 
 ### gRPC generated files ###
 /niffler-grpc-common/src/generated/**
+
+# Python virtual env
+venv/
+.venv/
+niffler-tests/venv/
+
+# pytest cache & pycache
+__pycache__/
+.pytest_cache/
+
+# локальные бэкапы
+docker-compose-dev.sh.backup
+
