@@ -35,3 +35,17 @@ protobuf {
         }
     }
 }
+
+// Принудительно указываем путь к исполняемым файлам для Windows
+if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+    protobuf {
+        protoc {
+            path = 'D:\\tools\\protoc\\bin\\protoc.exe'
+        }
+        plugins {
+            grpc {
+                path = 'D:\\tools\\protoc\\bin\\protoc-gen-grpc.exe'
+            }
+        }
+    }
+}
