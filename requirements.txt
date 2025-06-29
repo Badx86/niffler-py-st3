@@ -3,3 +3,6 @@ pytest==8.1.1
 pytest-html==4.1.1
 allure-pytest==2.13.2
 faker==24.4.0
+mimesis==18.0.0
+black==25.1.0
+pytest-sugar==1.0.0
