@@ -3,56 +3,61 @@ from .base_page import BasePage
 
 
 class MainPage(BasePage):
-    """Главная страница после авторизации"""
+    """Главная страница приложения после входа в систему"""
 
-    # Основные элементы
-    LOGO = 'a:has-text("Niffler")'
-    NEW_SPENDING_BUTTON = 'a[href="/spending"]'  # Ссылка New spending
-    PROFILE_BUTTON = 'button[aria-label="Menu"]'  # Круглая кнопка профиля
+    def __init__(self, page):
+        super().__init__(page)
 
-    # Заголовки
-    STATISTICS_TITLE = 'h2:has-text("Statistics")'
-    HISTORY_TITLE = 'h2:has-text("History of Spendings")'
+        # Ищем все элементы страницы один раз при создании объекта.
 
-    # Поиск
-    SEARCH_INPUT = 'input[placeholder="Search"]'
-    SEARCH_BUTTON = 'button[aria-label="search"]'
+        # Основные элементы в шапке
+        self.LOGO = self.page.locator('a:has-text("Niffler")')
+        self.NEW_SPENDING_BUTTON = self.page.locator('a[href="/spending"]')
+        self.PROFILE_BUTTON = self.page.locator('button[aria-label="Menu"]')
 
-    # Фильтры
-    TIME_FILTER_BUTTON = 'div[id="period"]'  # Комбобокс фильтра времени
-    CURRENCY_FILTER_BUTTON = 'div[id="currency"]'  # Комбобокс фильтра валют
-    DELETE_BUTTON = 'button[id="delete"]'  # Кнопка Delete
+        # Заголовки разделов
+        self.STATISTICS_TITLE = self.page.locator('h2:has-text("Statistics")')
+        self.HISTORY_TITLE = self.page.locator('h2:has-text("History of Spendings")')
 
-    # Дефолтное состояние
-    NO_SPENDINGS_MESSAGE = 'text="There are no spendings"'
-    NIFFLER_IMAGE = 'img[alt="Lonely niffler"]'
+        # Элементы поиска
+        self.SEARCH_INPUT = self.page.locator('input[placeholder="Search"]')
+        self.SEARCH_BUTTON = self.page.locator('button[aria-label="search"]')
 
-    # Меню профиля (выпадающий список)
-    PROFILE_MENU_PROFILE = 'a[href="/profile"]'
-    PROFILE_MENU_FRIENDS = 'a[href="/people/friends"]'
-    PROFILE_MENU_ALL_PEOPLE = 'a[href="/people/all"]'
-    PROFILE_MENU_SIGN_OUT = 'li[role="menuitem"]:has-text("Sign out")'
+        # Фильтры
+        self.TIME_FILTER_BUTTON = self.page.locator('div[id="period"]')
+        self.CURRENCY_FILTER_BUTTON = self.page.locator('div[id="currency"]')
+        self.DELETE_BUTTON = self.page.locator('button[id="delete"]')
 
-    # Опции фильтра времени
-    TIME_OPTION_ALL = 'li[data-value="ALL"]'
-    TIME_OPTION_LAST_MONTH = 'li[data-value="MONTH"]'
-    TIME_OPTION_LAST_WEEK = 'li[data-value="WEEK"]'
-    TIME_OPTION_TODAY = 'li[data-value="TODAY"]'
+        # Элементы когда нет трат
+        self.NO_SPENDINGS_MESSAGE = self.page.locator('text="There are no spendings"')
+        self.NIFFLER_IMAGE = self.page.locator('img[alt="Lonely niffler"]')
 
-    # Опции фильтра валют
-    CURRENCY_OPTION_ALL = 'li[data-value="ALL"]'
-    CURRENCY_OPTION_RUB = 'li[data-value="RUB"]'
-    CURRENCY_OPTION_KZT = 'li[data-value="KZT"]'
-    CURRENCY_OPTION_EUR = 'li[data-value="EUR"]'
-    CURRENCY_OPTION_USD = 'li[data-value="USD"]'
+        # Выпадающее меню профиля
+        self.PROFILE_MENU_PROFILE = self.page.locator('a[href="/profile"]')
+        self.PROFILE_MENU_FRIENDS = self.page.locator('a[href="/people/friends"]')
+        self.PROFILE_MENU_ALL_PEOPLE = self.page.locator('a[href="/people/all"]')
+        self.PROFILE_MENU_SIGN_OUT = self.page.locator('li[role="menuitem"]:has-text("Sign out")')
 
-    @allure.step("Проверка нахождения на главной странице")
-    def is_on_main_page(self):
-        """Проверка нахождения на главной странице"""
+        # Варианты в фильтре времени
+        self.TIME_OPTION_ALL = self.page.locator('li[data-value="ALL"]')
+        self.TIME_OPTION_LAST_MONTH = self.page.locator('li[data-value="MONTH"]')
+        self.TIME_OPTION_LAST_WEEK = self.page.locator('li[data-value="WEEK"]')
+        self.TIME_OPTION_TODAY = self.page.locator('li[data-value="TODAY"]')
+
+        # Варианты в фильтре валют
+        self.CURRENCY_OPTION_ALL = self.page.locator('li[data-value="ALL"]')
+        self.CURRENCY_OPTION_RUB = self.page.locator('li[data-value="RUB"]')
+        self.CURRENCY_OPTION_KZT = self.page.locator('li[data-value="KZT"]')
+        self.CURRENCY_OPTION_EUR = self.page.locator('li[data-value="EUR"]')
+        self.CURRENCY_OPTION_USD = self.page.locator('li[data-value="USD"]')
+
+    def is_loaded(self):
+        """
+        Проверяем что мы действительно на главной странице
+        Смотрим на URL и заголовок страницы
+        """
         current_url = self.page.url
-        title = self.get_title()
-
+        title = self.page.title()
         is_correct_url = "frontend.niffler.dc" in current_url and "/main" in current_url
         is_correct_title = title == "Niffler"
-
         return is_correct_url and is_correct_title

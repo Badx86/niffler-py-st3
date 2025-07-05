@@ -1,32 +1,27 @@
 import allure
+from abc import ABC, abstractmethod
 
 
-class BasePage:
+class BasePage(ABC):
+    """
+    Базовая страница для всех остальных страниц
+    """
+
     def __init__(self, page):
         self.page = page
 
     @allure.step("Переход по URL: {url}")
-    def go_to(self, url):
+    def navigate_to(self, url):
+        """
+        Переходим на нужную страницу и ждем пока она полностью загрузится
+        networkidle опция, используемая для определения момента, когда страница считается загруженной
+        """
         self.page.goto(url)
+        self.page.wait_for_load_state('networkidle')
 
-    @allure.step("Получение заголовка страницы")
-    def get_title(self):
-        return self.page.title()
-
-    @allure.step("Поиск элемента по селектору: {selector}")
-    def find_element(self, selector):
+    @abstractmethod
+    def is_loaded(self):
         """
-        Найти элемент по селектору.
-        :param selector: CSS-селектор для поиска элемента
-        :return: Элемент (объект типа Locator)
+        Каждая страница должна уметь проверять, что она загрузилась
         """
-        return self.page.locator(selector)
-
-    @allure.step("Поиск всех элементов по селектору: {selector}")
-    def find_elements(self, selector):
-        """
-        Найти все элементы по селектору.
-        :param selector: CSS-селектор для поиска элементов
-        :return: Список элементов (объекты типа Locator)
-        """
-        return self.page.locator(selector).all()  # Заменил на locator
+        pass

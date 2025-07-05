@@ -1,63 +1,53 @@
 import allure
 from .base_page import BasePage
-from utils.urls import AUTH_BASE_URL, LOGIN_ENDPOINT
 
 
 class LoginPage(BasePage):
-    """Страница авторизации"""
+    """Страница входа в систему"""
 
-    # Селекторы
-    USERNAME_INPUT = 'input[name="username"]'
-    PASSWORD_INPUT = 'input[name="password"]'
-    LOGIN_BUTTON = 'button:has-text("Log in")'
-    CREATE_ACCOUNT_BUTTON = 'a:has-text("Create new account")'
-    ERROR_MESSAGE = '[class*="error"], [class*="alert"], .alert-danger'
+    def __init__(self, page):
+        super().__init__(page)
+
+        # Находим все нужные элементы один раз при создании объекта
+        self.username_input = self.page.locator('input[name="username"]')
+        self.password_input = self.page.locator('input[name="password"]')
+        self.login_button = self.page.locator('button:has-text("Log in")')
+        self.create_account_button = self.page.locator('a:has-text("Create new account")')
+        self.error_message = self.page.locator('[class*="error"], [class*="alert"], .alert-danger')
 
     @allure.step("Открытие страницы логина")
     def open(self):
-        """Открыть страницу логина"""
-        self.go_to(f"{AUTH_BASE_URL}{LOGIN_ENDPOINT}")
+        """Переходим на страницу входа"""
+        self.navigate_to("http://auth.niffler.dc:9000/login")
 
     @allure.step("Ввод логина: {username}")
     def enter_username(self, username):
-        """Ввести имя пользователя"""
-        self.find_element(self.USERNAME_INPUT).fill(username)
+        """Вводим имя пользователя"""
+        self.username_input.fill(username)
 
     @allure.step("Ввод пароля")
     def enter_password(self, password):
-        """Ввести пароль"""
-        self.find_element(self.PASSWORD_INPUT).fill(password)
+        """Вводим пароль"""
+        self.password_input.fill(password)
 
     @allure.step("Клик по кнопке Log in")
     def click_login_button(self):
-        """Кликнуть по кнопке входа"""
-        self.find_element(self.LOGIN_BUTTON).click()
+        """Нажимаем кнопку входа"""
+        self.login_button.click()
 
     @allure.step("Клик по кнопке Create new account")
     def click_create_account_button(self):
-        """Кликнуть по кнопке создания аккаунта"""
-        self.find_element(self.CREATE_ACCOUNT_BUTTON).click()
+        """Нажимаем кнопку создания нового аккаунта"""
+        self.create_account_button.click()
 
-    @allure.step("Проверка что находимся на странице логина")
-    def assert_on_login_page(self):
-        """Проверить что находимся на странице логина"""
-        assert LOGIN_ENDPOINT in self.page.url, f"Не на странице логина. URL: {self.page.url}"
+    def is_loaded(self):
+        """Проверяем что мы действительно на странице входа"""
+        return "/login" in self.page.url and self.username_input.is_visible()
 
-    @allure.step("Проверка ошибки логина")
-    def assert_login_error(self):
-        """Проверить ошибку логина"""
-        assert "?error" in self.page.url, "В URL нет параметра error"
-        assert self.page.locator('.form__error-container').is_visible(), "Контейнер ошибки не видим"
-
-    @allure.step("Проверка что находимся на странице регистрации")
-    def assert_on_register_page(self):
-        """Проверить что находимся на странице регистрации"""
-        assert "/register" in self.page.url, f"Не на странице регистрации. URL: {self.page.url}"
-
-    @allure.step("Проверка отображения ошибки")
     def is_error_displayed(self):
-        """Проверить отображение ошибки"""
-        try:
-            return self.find_element(self.ERROR_MESSAGE).is_visible()
-        except:
-            return False
+        """Проверяем появилась ли ошибка при входе"""
+        return "?error" in self.page.url and self.page.locator('.form__error-container').is_visible()
+
+    def is_on_register_page(self):
+        """Проверяем что попали на страницу регистрации"""
+        return "/register" in self.page.url

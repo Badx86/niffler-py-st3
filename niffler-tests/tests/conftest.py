@@ -1,29 +1,21 @@
 from playwright.sync_api import sync_playwright
 import pytest
-import os
 from mimesis import Person
 from pages.login_page import LoginPage
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_output_directory():
-    # Путь к директории для скриншотов
-    output_dir = os.path.join(os.path.dirname(__file__), "output")
-    # Создание директории, если она еще не существует
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-
 @pytest.fixture(scope="session")
 def playwright():
+    """Создаем экземпляр Playwright для всей сессии тестов"""
     with sync_playwright() as p:
         yield p
 
 
 @pytest.fixture(scope="function")
 def browser(playwright):
+    """Создаем браузер для каждого теста отдельно"""
     print('\nstart browser...')
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=False)  # headless=False чтобы видеть что происходит
     yield browser
     print('\nquit browser...')
     browser.close()
@@ -31,6 +23,7 @@ def browser(playwright):
 
 @pytest.fixture(scope="function")
 def context(browser):
+    """Создаем контекст браузера (как отдельное окно)"""
     context = browser.new_context()
     yield context
     context.close()
@@ -38,6 +31,7 @@ def context(browser):
 
 @pytest.fixture(scope="function")
 def page(context):
+    """Создаем страницу (вкладку) для теста"""
     page = context.new_page()
     yield page
     page.close()
@@ -45,7 +39,7 @@ def page(context):
 
 @pytest.fixture
 def user_data():
-    """Генерация данных пользователя"""
+    """Генерируем случайные данные пользователя для каждого теста"""
     person = Person()
     username = person.username() + str(person.identifier(mask='###'))
     password = person.password(length=10)
@@ -54,11 +48,11 @@ def user_data():
 
 @pytest.fixture
 def registered_user(page, user_data):
-    """Регистрация пользователя"""
+    """Регистрируем нового пользователя и возвращаем его данные"""
     username, password = user_data
     login_page = LoginPage(page)
 
-    # Регистрация
+    # Идем на страницу регистрации и заполняем форму
     login_page.open()
     login_page.click_create_account_button()
 
@@ -72,17 +66,17 @@ def registered_user(page, user_data):
 
 @pytest.fixture
 def logged_in_user(page, registered_user):
-    """Авторизованный пользователь"""
+    """Авторизуем пользователя и переходим на главную страницу"""
     username, password = registered_user
     login_page = LoginPage(page)
 
-    # Авторизация
+    # Входим в систему с зарегистрированными данными
     login_page.open()
     login_page.enter_username(username)
     login_page.enter_password(password)
     login_page.click_login_button()
 
-    # Ожидание редиректа на главную страницу
+    # Ждем пока нас перебросит на главную страницу
     page.wait_for_url("**/main", timeout=5000)
 
     return username, password
