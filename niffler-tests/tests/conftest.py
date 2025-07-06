@@ -1,7 +1,67 @@
 from playwright.sync_api import sync_playwright
-import pytest
-from mimesis import Person
 from pages.login_page import LoginPage
+from mimesis import Person
+from config import Config
+import pytest
+import allure
+import json
+import sys
+import os
+
+
+# Добавить опции
+def pytest_addoption(parser):
+    parser.addoption("--env", action="store", default="local",
+                     help="Environment: local, docker, staging")
+
+
+# Окружение
+@pytest.fixture(scope="session")
+def environment(request):
+    env_name = request.config.getoption("--env")
+    return Config.get_env_config(env_name)
+
+
+# Allure окружение
+@pytest.fixture(scope="session", autouse=True)
+def allure_environment(environment):
+    properties = [
+        f"Environment={environment['frontend_url']}",
+        f"Auth_URL={environment['auth_url']}",
+        f"Python_Version={sys.version.split()[0]}",
+        f"Browser=Chromium",
+        f"Framework=Playwright + pytest"
+    ]
+
+    os.makedirs("allure-results", exist_ok=True)
+    with open("allure-results/environment.properties", "w") as f:
+        for prop in properties:
+            f.write(f"{prop}\n")
+
+
+# Категории ошибок
+def pytest_configure(config):
+    categories = [
+        {
+            "name": "UI Element Not Found",
+            "messageRegex": ".*locator.*|.*element.*not.*found.*",
+            "traceRegex": ".*playwright.*"
+        },
+        {
+            "name": "Page Load Timeout",
+            "messageRegex": ".*timeout.*|.*page.*load.*",
+            "traceRegex": ".*playwright.*"
+        },
+        {
+            "name": "Authentication Failed",
+            "messageRegex": ".*login.*failed.*|.*auth.*error.*",
+            "traceRegex": ".*"
+        }
+    ]
+
+    os.makedirs("allure-results", exist_ok=True)
+    with open("allure-results/categories.json", "w") as f:
+        json.dump(categories, f, indent=2)
 
 
 @pytest.fixture(scope="session")
