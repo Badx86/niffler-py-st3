@@ -9,16 +9,16 @@ class Config:
     ENVIRONMENTS = {
         "local": {
             "auth_url": "http://localhost:9000",
-            "frontend_url": "http://localhost:3000"
+            "frontend_url": "http://localhost:3000",
         },
         "docker": {
             "auth_url": "http://auth.niffler.dc:9000",
-            "frontend_url": "http://frontend.niffler.dc:3000"
+            "frontend_url": "http://frontend.niffler.dc:3000",
         },
         "staging": {
             "auth_url": "https://auth.niffler-stage.qa.guru",
-            "frontend_url": "https://niffler-stage.qa.guru"
-        }
+            "frontend_url": "https://niffler-stage.qa.guru",
+        },
     }
 
     @classmethod

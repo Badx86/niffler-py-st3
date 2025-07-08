@@ -12,8 +12,12 @@ class LoginPage(BasePage):
         self.username_input = self.page.locator('input[name="username"]')
         self.password_input = self.page.locator('input[name="password"]')
         self.login_button = self.page.locator('button:has-text("Log in")')
-        self.create_account_button = self.page.locator('a:has-text("Create new account")')
-        self.error_message = self.page.locator('[class*="error"], [class*="alert"], .alert-danger')
+        self.create_account_button = self.page.locator(
+            'a:has-text("Create new account")'
+        )
+        self.error_message = self.page.locator(
+            '[class*="error"], [class*="alert"], .alert-danger'
+        )
 
     @allure.step("Открытие страницы логина")
     def open(self):
@@ -46,7 +50,10 @@ class LoginPage(BasePage):
 
     def is_error_displayed(self):
         """Проверяем появилась ли ошибка при входе"""
-        return "?error" in self.page.url and self.page.locator('.form__error-container').is_visible()
+        return (
+            "?error" in self.page.url
+            and self.page.locator(".form__error-container").is_visible()
+        )
 
     def is_on_register_page(self):
         """Проверяем что попали на страницу регистрации"""

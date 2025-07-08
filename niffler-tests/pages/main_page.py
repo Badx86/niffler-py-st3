@@ -1,4 +1,3 @@
-import allure
 from .base_page import BasePage
 
 
@@ -12,7 +11,7 @@ class MainPage(BasePage):
 
         # Основные элементы в шапке
         # self.LOGO = self.page.locator('h1:has-text("Niffler")')
-        self.LOGO = self.page.locator('[class*="MuiTypography"]:has-text("Niffler")')
+        self.LOGO = self.page.locator('a.link[href="/main"] img')
         self.NEW_SPENDING_BUTTON = self.page.locator('a[href="/spending"]')
         self.PROFILE_BUTTON = self.page.locator('button[aria-label="Menu"]')
 
@@ -37,7 +36,9 @@ class MainPage(BasePage):
         self.PROFILE_MENU_PROFILE = self.page.locator('a[href="/profile"]')
         self.PROFILE_MENU_FRIENDS = self.page.locator('a[href="/people/friends"]')
         self.PROFILE_MENU_ALL_PEOPLE = self.page.locator('a[href="/people/all"]')
-        self.PROFILE_MENU_SIGN_OUT = self.page.locator('li[role="menuitem"]:has-text("Sign out")')
+        self.PROFILE_MENU_SIGN_OUT = self.page.locator(
+            'li[role="menuitem"]:has-text("Sign out")'
+        )
 
         # Варианты в фильтре времени
         self.TIME_OPTION_ALL = self.page.locator('li[data-value="ALL"]')
