@@ -6,3 +6,4 @@ faker==24.4.0
 mimesis==18.0.0
 black==25.1.0
 pytest-sugar==1.0.0
+python-dotenv==1.1.1

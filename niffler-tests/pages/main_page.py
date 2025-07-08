@@ -11,7 +11,8 @@ class MainPage(BasePage):
         # Ищем все элементы страницы один раз при создании объекта.
 
         # Основные элементы в шапке
-        self.LOGO = self.page.locator('a:has-text("Niffler")')
+        # self.LOGO = self.page.locator('h1:has-text("Niffler")')
+        self.LOGO = self.page.locator('[class*="MuiTypography"]:has-text("Niffler")')
         self.NEW_SPENDING_BUTTON = self.page.locator('a[href="/spending"]')
         self.PROFILE_BUTTON = self.page.locator('button[aria-label="Menu"]')
 
