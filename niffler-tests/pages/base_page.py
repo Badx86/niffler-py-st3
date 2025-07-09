@@ -17,7 +17,7 @@ class BasePage(ABC):
         networkidle опция, используемая для определения момента, когда страница считается загруженной
         """
         self.page.goto(url)
-        self.page.wait_for_load_state('networkidle')
+        self.page.wait_for_load_state("networkidle")
 
     @abstractmethod
     def is_loaded(self):

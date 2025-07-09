@@ -26,7 +26,7 @@ class TestAuth:
         # Проверяем что регистрация прошла успешно
         assert "/register" in page.url
         assert page.locator('text="Congratulations! You\'ve registered!"').is_visible()
-        assert page.locator('a.form_sign-in').is_visible()
+        assert page.locator("a.form_sign-in").is_visible()
 
     @allure.story("Неуспешная авторизация")
     def test_failed_login(self, page, user_data):
@@ -54,9 +54,9 @@ class TestAuth:
         assert login_page.is_on_register_page()
 
         # Проверяем что все элементы формы регистрации на месте
-        assert page.locator('h1.header').is_visible()
-        assert page.locator('a.form__link').is_visible()
+        assert page.locator("h1.header").is_visible()
+        assert page.locator("a.form__link").is_visible()
         assert page.locator('input[name="username"]').is_visible()
         assert page.locator('input[name="password"]').is_visible()
         assert page.locator('input[name="passwordSubmit"]').is_visible()
-        assert page.locator('button.form__submit').is_visible()
+        assert page.locator("button.form__submit").is_visible()

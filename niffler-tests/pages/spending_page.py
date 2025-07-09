@@ -15,7 +15,7 @@ class SpendingPage(BasePage):
 
         # Поля формы
         self.AMOUNT_INPUT = self.page.locator('input[name="amount"]')
-        self.CURRENCY_DROPDOWN = self.page.locator('#currency')
+        self.CURRENCY_DROPDOWN = self.page.locator("#currency")
         self.CATEGORY_INPUT = self.page.locator('input[name="category"]')
         self.DATE_INPUT = self.page.locator('input[name="date"]')
         self.DATE_PICKER_BUTTON = self.page.locator('button:has(img[alt="Calendar"])')
@@ -26,9 +26,13 @@ class SpendingPage(BasePage):
         self.ADD_BUTTON = self.page.get_by_role("button", name="Add")
 
         # Сообщения об ошибках валидации
-        self.AMOUNT_ERROR = self.page.locator('text="Amount has to be not less then 0.01"')
+        self.AMOUNT_ERROR = self.page.locator(
+            'text="Amount has to be not less then 0.01"'
+        )
         self.CATEGORY_ERROR = self.page.locator('text="Please choose category"')
-        self.ERROR_MESSAGES = self.page.locator('.input__helper-text, span[class*="helper-text"]')
+        self.ERROR_MESSAGES = self.page.locator(
+            '.input__helper-text, span[class*="helper-text"]'
+        )
 
         # Валюты в dropdown
         self.CURRENCY_RUB = self.page.locator('li[data-value="RUB"]')
@@ -37,7 +41,7 @@ class SpendingPage(BasePage):
         self.CURRENCY_USD = self.page.locator('li[data-value="USD"]')
 
         # Календарь
-        self.CALENDAR = self.page.locator('.MuiDateCalendar-root')
+        self.CALENDAR = self.page.locator(".MuiDateCalendar-root")
 
     def get_current_month_year(self):
         """Получение текущего месяца и года для календаря"""
@@ -111,7 +115,7 @@ class SpendingPage(BasePage):
 
     def get_description_placeholder(self):
         """Получение placeholder описания"""
-        return self.DESCRIPTION_INPUT.get_attribute('placeholder')
+        return self.DESCRIPTION_INPUT.get_attribute("placeholder")
 
     def is_calendar_visible(self):
         """Проверка видимости календаря"""
