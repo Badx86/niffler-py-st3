@@ -1,7 +1,8 @@
 from pages.login_page import LoginPage
 from pages.main_page import MainPage
 from pages.spending_page import SpendingPage
-from mimesis import Person
+from actions.auth_actions import AuthActions
+from builders.user_builder import UserBuilder
 from config import Config
 import pytest
 import allure
@@ -131,6 +132,12 @@ def spending_page(page):
     return SpendingPage(page)
 
 
+@pytest.fixture
+def auth_actions(page):
+    """Фикстура для действий авторизации"""
+    return AuthActions(page)
+
+
 # ===================
 # USER DATA FIXTURES
 # ===================
@@ -139,41 +146,23 @@ def spending_page(page):
 @pytest.fixture
 def user_data():
     """Генерация случайных данных пользователя для каждого теста"""
-    person = Person()
-    username = person.username() + str(person.identifier(mask="###"))
-    password = person.password(length=10)
-    return username, password
+    user_dict = UserBuilder().with_random_credentials().build()
+    return user_dict['username'], user_dict['password']
 
 
 @pytest.fixture
-def registered_user(login_page, user_data):
+def registered_user(auth_actions, user_data):
     """Регистрация нового пользователя и возврат его данных"""
     username, password = user_data
 
-    # Идем на страницу регистрации и заполняем форму
-    login_page.open()
-    login_page.click_create_account_button()
-
-    login_page.page.fill('input[name="username"]', username)
-    login_page.page.fill('input[name="password"]', password)
-    login_page.page.fill('input[name="passwordSubmit"]', password)
-    login_page.page.click('button:has-text("Sign Up")')
-
+    auth_actions.register_user(username, password)
     return username, password
 
 
 @pytest.fixture
-def logged_in_user(login_page, registered_user):
+def logged_in_user(auth_actions, registered_user):
     """Авторизация пользователя и переход на главную страницу"""
     username, password = registered_user
 
-    # Входим в систему с зарегистрированными данными
-    login_page.open()
-    login_page.enter_username(username)
-    login_page.enter_password(password)
-    login_page.click_login_button()
-
-    # Ждем пока нас перебросит на главную страницу
-    login_page.page.wait_for_url("**/main", timeout=5000)
-
+    auth_actions.login_user(username, password)
     return username, password

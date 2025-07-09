@@ -1,5 +1,5 @@
 import allure
-from pages.login_page import LoginPage
+from actions.auth_actions import AuthActions
 
 
 @allure.feature("Авторизация")
@@ -7,56 +7,27 @@ class TestAuth:
     """Тесты для проверки входа в систему и регистрации"""
 
     @allure.story("Успешная регистрация")
-    def test_successful_registration(self, page, user_data):
+    def test_successful_registration(self, login_page, user_data):
         """Проверяем что новый пользователь может зарегистрироваться"""
+        auth_actions = AuthActions(login_page.page)
         username, password = user_data
-        login_page = LoginPage(page)
 
-        # Идем на страницу регистрации
-        login_page.open()
-        login_page.click_create_account_button()
-        assert login_page.is_on_register_page()
-
-        # Заполняем форму регистрации
-        page.fill('input[name="username"]', username)
-        page.fill('input[name="password"]', password)
-        page.fill('input[name="passwordSubmit"]', password)
-        page.click('button:has-text("Sign Up")')
-
-        # Проверяем что регистрация прошла успешно
-        assert "/register" in page.url
-        assert page.locator('text="Congratulations! You\'ve registered!"').is_visible()
-        assert page.locator("a.form_sign-in").is_visible()
+        success = auth_actions.register_user(username, password)
+        assert success, "Регистрация не прошла успешно"
 
     @allure.story("Неуспешная авторизация")
-    def test_failed_login(self, page, user_data):
+    def test_failed_login(self, login_page, user_data):
         """Проверяем что с невалидными данными нельзя авторизоваться"""
+        auth_actions = AuthActions(login_page.page)
         username, password = user_data
-        login_page = LoginPage(page)
 
-        # Пытаемся войти с несуществующими данными
-        login_page.open()
-        login_page.enter_username(username)
-        login_page.enter_password(password)
-        login_page.click_login_button()
-
-        # Должна появиться ошибка
-        assert login_page.is_error_displayed()
+        error_displayed = auth_actions.try_invalid_login(username, password)
+        assert error_displayed, "Ошибка авторизации не отображается"
 
     @allure.story("Переход к регистрации")
-    def test_go_to_registration(self, page):
+    def test_go_to_registration(self, login_page):
         """Проверяем что со страницы входа можно перейти к регистрации"""
-        login_page = LoginPage(page)
+        auth_actions = AuthActions(login_page.page)
 
-        # Переходим к регистрации
-        login_page.open()
-        login_page.click_create_account_button()
-        assert login_page.is_on_register_page()
-
-        # Проверяем что все элементы формы регистрации на месте
-        assert page.locator("h1.header").is_visible()
-        assert page.locator("a.form__link").is_visible()
-        assert page.locator('input[name="username"]').is_visible()
-        assert page.locator('input[name="password"]').is_visible()
-        assert page.locator('input[name="passwordSubmit"]').is_visible()
-        assert page.locator("button.form__submit").is_visible()
+        on_register_page = auth_actions.go_to_registration()
+        assert on_register_page, "Не перешли на страницу регистрации"

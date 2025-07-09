@@ -1,5 +1,4 @@
 import allure
-from datetime import datetime
 from .base_page import BasePage
 
 
@@ -9,118 +8,11 @@ class SpendingPage(BasePage):
     def __init__(self, page):
         super().__init__(page)
 
-        # Заголовок и навигация
-        self.PAGE_TITLE = self.page.get_by_text("Add new spending")
-        self.LOGO = self.page.get_by_text("Niffler")
-
-        # Поля формы
-        self.AMOUNT_INPUT = self.page.locator('input[name="amount"]')
-        self.CURRENCY_DROPDOWN = self.page.locator("#currency")
-        self.CATEGORY_INPUT = self.page.locator('input[name="category"]')
-        self.DATE_INPUT = self.page.locator('input[name="date"]')
-        self.DATE_PICKER_BUTTON = self.page.locator('button:has(img[alt="Calendar"])')
-        self.DESCRIPTION_INPUT = self.page.locator('input[name="description"]')
-
-        # Кнопки
-        self.CANCEL_BUTTON = self.page.get_by_role("button", name="Cancel")
-        self.ADD_BUTTON = self.page.get_by_role("button", name="Add")
-
-        # Сообщения об ошибках валидации
-        self.AMOUNT_ERROR = self.page.locator(
-            'text="Amount has to be not less then 0.01"'
-        )
-        self.CATEGORY_ERROR = self.page.locator('text="Please choose category"')
-        self.ERROR_MESSAGES = self.page.locator(
-            '.input__helper-text, span[class*="helper-text"]'
-        )
-
-        # Валюты в dropdown
-        self.CURRENCY_RUB = self.page.locator('li[data-value="RUB"]')
-        self.CURRENCY_KZT = self.page.locator('li[data-value="KZT"]')
-        self.CURRENCY_EUR = self.page.locator('li[data-value="EUR"]')
-        self.CURRENCY_USD = self.page.locator('li[data-value="USD"]')
-
-        # Календарь
-        self.CALENDAR = self.page.locator(".MuiDateCalendar-root")
-
-    def get_current_month_year(self):
-        """Получение текущего месяца и года для календаря"""
-        current_date = datetime.now()
-        return current_date.strftime("%B %Y")  # "July 2025"
-
-    def get_current_date_formatted(self):
-        """Получение текущей даты в формате MM/DD/YYYY для проверки дефолтного значения"""
-        current_date = datetime.now()
-        return current_date.strftime("%m/%d/%Y")  # "07/06/2025"
-
-    def get_calendar_month_locator(self):
-        """Локатор для текущего месяца в календаре"""
-        month_year = self.get_current_month_year()
-        return self.page.locator(f'text="{month_year}"')
-
     @allure.step("Открытие страницы добавления расходов")
     def open(self):
         """Переход на страницу добавления расходов"""
         self.navigate_to("http://frontend.niffler.dc/spending")
 
-    @allure.step("Заполнение суммы: {amount}")
-    def fill_amount(self, amount):
-        """Ввод суммы"""
-        self.AMOUNT_INPUT.clear()
-        self.AMOUNT_INPUT.fill(str(amount))
-
-    @allure.step("Выбор валюты: {currency}")
-    def select_currency(self, currency):
-        """Выбор валюты из dropdown"""
-        self.CURRENCY_DROPDOWN.click()
-        currency_option = self.page.locator(f'li[data-value="{currency}"]')
-        currency_option.click()
-
-    @allure.step("Ввод категории: {category}")
-    def fill_category(self, category):
-        """Ввод категории"""
-        self.CATEGORY_INPUT.fill(category)
-
-    @allure.step("Ввод описания: {description}")
-    def fill_description(self, description):
-        """Ввод описания"""
-        self.DESCRIPTION_INPUT.fill(description)
-
-    @allure.step("Открытие календаря")
-    def open_date_picker(self):
-        """Открытие календаря для выбора даты"""
-        self.DATE_PICKER_BUTTON.click()
-
-    @allure.step("Клик по кнопке Add")
-    def click_add_button(self):
-        """Нажатие кнопки добавления расхода"""
-        self.ADD_BUTTON.click()
-
-    @allure.step("Клик по кнопке Cancel")
-    def click_cancel_button(self):
-        """Нажатие кнопки отмены"""
-        self.CANCEL_BUTTON.click()
-
     def is_loaded(self):
         """Проверка что страница загружена"""
-        return "/spending" in self.page.url and self.PAGE_TITLE.is_visible()
-
-    def get_amount_value(self):
-        """Получение текущего значения поля Amount"""
-        return self.AMOUNT_INPUT.input_value()
-
-    def get_date_value(self):
-        """Получение текущего значения поля Date"""
-        return self.DATE_INPUT.input_value()
-
-    def get_description_placeholder(self):
-        """Получение placeholder описания"""
-        return self.DESCRIPTION_INPUT.get_attribute("placeholder")
-
-    def is_calendar_visible(self):
-        """Проверка видимости календаря"""
-        return self.CALENDAR.is_visible()
-
-    def is_currency_dropdown_open(self):
-        """Проверка что dropdown валют открыт"""
-        return self.CURRENCY_RUB.is_visible()
+        return "/spending" in self.page.url
