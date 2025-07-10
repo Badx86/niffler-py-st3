@@ -1,4 +1,5 @@
 from mimesis import Person
+from models.data_models import UserData
 
 
 class UserBuilder:
@@ -11,7 +12,9 @@ class UserBuilder:
 
     def with_random_credentials(self):
         """Генерация случайных учетных данных"""
-        self._username = self.person.username() + str(self.person.identifier(mask="###"))
+        self._username = self.person.username() + str(
+            self.person.identifier(mask="###")
+        )
         self._password = self.person.password(length=10)
         return self
 
@@ -25,20 +28,19 @@ class UserBuilder:
         self._password = password
         return self
 
-    def build(self):
+    def build(self) -> UserData:
         """
         Создание объекта пользователя с данными
 
         Returns:
-            dict: словарь с данными пользователя
+            UserData: Pydantic модель с данными пользователя
         """
         # Если данные не заданы, генерируем случайные
         if not self._username:
-            self._username = self.person.username() + str(self.person.identifier(mask="###"))
+            self._username = self.person.username() + str(
+                self.person.identifier(mask="###")
+            )
         if not self._password:
             self._password = self.person.password(length=10)
 
-        return {
-            'username': self._username,
-            'password': self._password
-        }
+        return UserData(username=self._username, password=self._password)

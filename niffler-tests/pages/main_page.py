@@ -1,17 +1,18 @@
 from .base_page import BasePage
+from playwright.sync_api import Page
 
 
 class MainPage(BasePage):
     """Главная страница приложения после входа в систему"""
 
-    def __init__(self, page):
+    def __init__(self, page: Page) -> None:
         super().__init__(page)
 
-    def open(self):
+    def open(self) -> None:
         """Переход на главную страницу"""
         self.navigate_to("http://frontend.niffler.dc/main")
 
-    def is_loaded(self):
+    def is_loaded(self) -> bool:
         """
         Проверяем что мы действительно на главной странице
         Смотрим на URL и заголовок страницы

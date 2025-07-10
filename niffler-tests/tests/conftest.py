@@ -9,6 +9,7 @@ import allure
 import json
 import sys
 import os
+from pathlib import Path
 
 
 # ===============================
@@ -53,18 +54,30 @@ def pytest_configure(config):
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Автоматические скриншоты при падении тестов"""
+    """Автоматические скриншоты и видео при падении тестов"""
     outcome = yield
     rep = outcome.get_result()
     if rep.when == "call" and rep.failed:
         if "page" in item.fixturenames:
             page = item.funcargs["page"]
+
+            # Скриншот
             screenshot_bytes = page.screenshot()
             allure.attach(
                 screenshot_bytes,
                 name="screenshot",
                 attachment_type=allure.attachment_type.PNG,
             )
+
+            # Видео
+            if page.video:
+                video_path = page.video.path()
+                if video_path and Path(video_path).exists():
+                    allure.attach.file(
+                        video_path,
+                        name="video",
+                        attachment_type=allure.attachment_type.WEBM,
+                    )
 
 
 # =============================
@@ -79,10 +92,39 @@ def environment(request):
     return Config.get_env_config(env_name)
 
 
+@pytest.fixture(scope="session")
+def browser(playwright):
+    """Браузер с настройками из .env"""
+    headless = os.getenv("HEADLESS", "true").lower() == "true"
+    browser = playwright.chromium.launch(headless=headless)
+    yield browser
+    browser.close()
+
+
 @pytest.fixture(scope="function")
 def context(browser):
     """Браузер контекст с фиксированным размером окна"""
-    context = browser.new_context(viewport={"width": 1920, "height": 1080})
+    # Таймаут из .env или дефолтное значение
+    timeout = int(os.getenv("BROWSER_TIMEOUT", "30000"))
+
+    # Запись видео только если включено в .env
+    record_video = os.getenv("RECORD_VIDEO", "false").lower() == "true"
+
+    context_options = {
+        "viewport": {"width": 1920, "height": 1080},
+    }
+
+    if record_video:
+        context_options.update(
+            {
+                "record_video_dir": "videos/",
+                "record_video_size": {"width": 1920, "height": 1080},
+            }
+        )
+
+    context = browser.new_context(**context_options)
+    context.set_default_timeout(timeout)
+
     yield context
     context.close()
 
@@ -99,6 +141,9 @@ def allure_environment(environment):
         f"Environment={environment['frontend_url']}",
         f"Auth_URL={environment['auth_url']}",
         f"Python_Version={sys.version.split()[0]}",
+        f"Browser_Timeout={os.getenv('BROWSER_TIMEOUT', '30000')}ms",
+        f"Headless={os.getenv('HEADLESS', 'true')}",
+        f"Record_Video={os.getenv('RECORD_VIDEO', 'false')}",
         "Browser=Chromium",
         "Framework=Playwright + pytest",
     ]
@@ -133,9 +178,9 @@ def spending_page(page):
 
 
 @pytest.fixture
-def auth_actions(page):
+def auth_actions(login_page):
     """Фикстура для действий авторизации"""
-    return AuthActions(page)
+    return AuthActions(login_page)
 
 
 # ===================
@@ -146,23 +191,18 @@ def auth_actions(page):
 @pytest.fixture
 def user_data():
     """Генерация случайных данных пользователя для каждого теста"""
-    user_dict = UserBuilder().with_random_credentials().build()
-    return user_dict['username'], user_dict['password']
+    return UserBuilder().with_random_credentials().build()
 
 
 @pytest.fixture
 def registered_user(auth_actions, user_data):
     """Регистрация нового пользователя и возврат его данных"""
-    username, password = user_data
-
-    auth_actions.register_user(username, password)
-    return username, password
+    auth_actions.register_user(user_data.username, user_data.password)
+    return user_data
 
 
 @pytest.fixture
 def logged_in_user(auth_actions, registered_user):
     """Авторизация пользователя и переход на главную страницу"""
-    username, password = registered_user
-
-    auth_actions.login_user(username, password)
-    return username, password
+    auth_actions.login_user(registered_user.username, registered_user.password)
+    return registered_user
