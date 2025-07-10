@@ -1,4 +1,5 @@
 import allure
+from typing import Any
 from pages.spending_page import SpendingPage
 from components.forms.spending_form import SpendingFormComponent
 from components.header import HeaderComponent
@@ -7,14 +8,16 @@ from components.header import HeaderComponent
 class SpendingActions:
     """Действия для работы с тратами - создание, редактирование, удаление"""
 
-    def __init__(self, page):
-        self.page = page
-        self.spending_page = SpendingPage(page)
-        self.spending_form = SpendingFormComponent(page)
-        self.header = HeaderComponent(page)
+    def __init__(self, page_object: Any) -> None:
+        self.page = page_object.page
+        self.spending_page = SpendingPage(self.page)
+        self.spending_form = SpendingFormComponent(self.page)
+        self.header = HeaderComponent(self.page)
 
     @allure.step("Создание траты")
-    def create_spending(self, amount, currency, category, description=""):
+    def create_spending(
+        self, amount: int | float, currency: str, category: str, description: str = ""
+    ) -> bool:
         """
         Создание новой траты с заданными параметрами
 
@@ -44,7 +47,7 @@ class SpendingActions:
         return "/main" in self.page.url
 
     @allure.step("Переход к созданию траты через кнопку")
-    def navigate_to_spending_from_main(self):
+    def navigate_to_spending_from_main(self) -> bool:
         """
         Переход к созданию траты с главной страницы через кнопку
 
@@ -57,7 +60,7 @@ class SpendingActions:
         return self.spending_page.is_loaded()
 
     @allure.step("Отмена создания траты")
-    def cancel_spending_creation(self):
+    def cancel_spending_creation(self) -> bool:
         """
         Частичное заполнение формы и отмена создания
 
@@ -77,7 +80,7 @@ class SpendingActions:
         return "/main" in self.page.url
 
     @allure.step("Попытка создания траты с невалидными данными")
-    def try_create_invalid_spending(self):
+    def try_create_invalid_spending(self) -> bool:
         """
         Попытка сохранения с дефолтными значениями (amount=0, пустая category)
 
@@ -87,11 +90,13 @@ class SpendingActions:
         self.spending_page.open()
         self.spending_form.click_add()
 
-        return (self.spending_form.is_amount_error_visible() and
-                self.spending_form.is_category_error_visible())
+        return (
+            self.spending_form.is_amount_error_visible()
+            and self.spending_form.is_category_error_visible()
+        )
 
     @allure.step("Исправление ошибок валидации")
-    def fix_validation_errors(self):
+    def fix_validation_errors(self) -> bool:
         """
         Пошаговое исправление ошибок валидации
 

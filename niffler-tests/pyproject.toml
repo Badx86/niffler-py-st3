@@ -3,7 +3,7 @@ name = "niffler-tests"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Stanislav Osipov",email = "stanislav.osipov89@gmail.com"}
+    { name = "Stanislav Osipov", email = "stanislav.osipov89@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
@@ -15,15 +15,25 @@ dependencies = [
     "python-dotenv (==1.1.1)",
     "pytest-playwright (>=0.7.0,<0.8.0)",
     "allure-pytest (>=2.14.3,<3.0.0)",
-    "ruff (>=0.12.2,<0.13.0)"
-]
+    "ruff (>=0.12.2,<0.13.0)",
+    "pydantic (>=2.11.7,<3.0.0)",
+    "pytest-timeout (>=2.4.0,<3.0.0)",
 
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry]
+package-mode = false
+
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"
 pytest-sugar = "1.0.0"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+timeout = 10
+addopts = "--alluredir=allure-results --clean-alluredir -v --tb=short"

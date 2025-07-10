@@ -1,8 +1,10 @@
+import allure
+from pages.main_page import MainPage
 from components.header import HeaderComponent
 from components.filters.time_filter import TimeFilterComponent
 from components.filters.currency_filter import CurrencyFilterComponent
 from actions.profile_actions import ProfileActions
-import allure
+from playwright.sync_api import expect
 
 
 @allure.feature("Главная страница")
@@ -16,16 +18,22 @@ class TestMainPage:
 
         with allure.step("Проверка что находимся на главной странице"):
             header.LOGO.wait_for(state="visible")
-            assert main_page.is_loaded(), f"Не на главной странице. URL: {main_page.page.url}"
+            assert (
+                main_page.is_loaded()
+            ), f"Не на главной странице. URL: {main_page.page.url}"
 
         with allure.step("Проверка основных элементов"):
             assert header.is_logo_visible(), "Логотип Niffler не видим"
-            assert header.is_new_spending_button_visible(), "Кнопка New spending не видима"
+            assert (
+                header.is_new_spending_button_visible()
+            ), "Кнопка New spending не видима"
             assert header.is_profile_button_visible(), "Кнопка профиля не видима"
 
         with allure.step("Проверка заголовков разделов"):
             statistics_title = main_page.page.locator('h2:has-text("Statistics")')
-            history_title = main_page.page.locator('h2:has-text("History of Spendings")')
+            history_title = main_page.page.locator(
+                'h2:has-text("History of Spendings")'
+            )
             assert statistics_title.is_visible(), "Заголовок Statistics не виден"
             assert history_title.is_visible(), "Заголовок History of Spendings не виден"
 
@@ -35,7 +43,9 @@ class TestMainPage:
 
         with allure.step("Проверка поля поиска"):
             search_input = main_page.page.locator('input[placeholder="Search"]')
-            assert search_input.get_attribute("placeholder") == "Search", "Неверный placeholder в поле поиска"
+            assert (
+                search_input.get_attribute("placeholder") == "Search"
+            ), "Неверный placeholder в поле поиска"
 
         with allure.step("Проверка кнопки поиска"):
             search_button = main_page.page.locator('button[aria-label="search"]')
@@ -66,7 +76,7 @@ class TestMainPage:
     @allure.story("Проверка меню профиля")
     def test_profile_menu(self, main_page, logged_in_user):
         """Проверяем что меню профиля открывается и показывает все пункты"""
-        profile_actions = ProfileActions(main_page.page)
+        profile_actions = ProfileActions(main_page)
 
         with allure.step("Клик по кнопке профиля"):
             menu_visible = profile_actions.open_profile_menu()
@@ -77,16 +87,16 @@ class TestMainPage:
         """Проверяем что новому пользователю показывается правильное сообщение"""
 
         with allure.step("Проверка сообщения об отсутствии трат"):
-            # Ждем пока загрузится сообщение
-            main_page.page.wait_for_selector('text="There are no spendings"', timeout=5000)
+            # Улучшенная стратегия ожидания - ждем загрузки страницы, потом элемент
+            main_page.page.wait_for_load_state("networkidle")
             no_spendings = main_page.page.locator('text="There are no spendings"')
-            assert no_spendings.is_visible(), "Сообщение 'There are no spendings' не видимо"
+            # Используем expect с таймаутом для более надежного ожидания
+            expect(no_spendings).to_be_visible(timeout=10000)
 
         with allure.step("Проверка изображения Niffler"):
-            # Ждем пока загрузится картинка
-            main_page.page.wait_for_selector('img[alt="Lonely niffler"]', timeout=5000)
+            # Аналогично для картинки
             niffler_image = main_page.page.locator('img[alt="Lonely niffler"]')
-            assert niffler_image.is_visible(), "Изображение Niffler не видимо"
+            expect(niffler_image).to_be_visible(timeout=5000)
 
     @allure.story("Проверка состояния кнопки Delete")
     def test_delete_button_state(self, main_page, logged_in_user):
@@ -94,4 +104,6 @@ class TestMainPage:
 
         with allure.step("Проверка кнопки Delete"):
             delete_btn = main_page.page.locator('button[id="delete"]')
-            assert delete_btn.is_disabled(), "Кнопка Delete должна быть неактивной для пользователя без трат"
+            assert (
+                delete_btn.is_disabled()
+            ), "Кнопка Delete должна быть неактивной для пользователя без трат"

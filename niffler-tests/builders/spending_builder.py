@@ -1,5 +1,6 @@
 import random
 from mimesis import Text
+from models.data_models import SpendingData
 
 
 class SpendingBuilder:
@@ -40,7 +41,14 @@ class SpendingBuilder:
 
     def with_random_category(self):
         """Выбор случайной категории из популярных"""
-        categories = ["Food", "Transport", "Entertainment", "Shopping", "Health", "Bills"]
+        categories = [
+            "Food",
+            "Transport",
+            "Entertainment",
+            "Shopping",
+            "Health",
+            "Bills",
+        ]
         self._category = random.choice(categories)
         return self
 
@@ -59,17 +67,17 @@ class SpendingBuilder:
             "Movie theater",
             "Online purchase",
             "Pharmacy",
-            "Utility bill"
+            "Utility bill",
         ]
         self._description = random.choice(descriptions)
         return self
 
-    def build(self):
+    def build(self) -> SpendingData:
         """
         Создание объекта траты с данными
 
         Returns:
-            dict: словарь с данными траты
+            SpendingData: Pydantic модель с данными траты
         """
         # Если данные не заданы, генерируем дефолтные/случайные
         if self._amount is None:
@@ -81,9 +89,9 @@ class SpendingBuilder:
         if self._description is None:
             self._description = "Test spending"
 
-        return {
-            'amount': self._amount,
-            'currency': self._currency,
-            'category': self._category,
-            'description': self._description
-        }
+        return SpendingData(
+            amount=self._amount,
+            currency=self._currency,
+            category=self._category,
+            description=self._description,
+        )

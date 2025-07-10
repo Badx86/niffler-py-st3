@@ -6,13 +6,13 @@ from components.forms.login_form import LoginFormComponent
 class AuthActions:
     """Действия для работы с авторизацией и регистрацией пользователей"""
 
-    def __init__(self, page):
-        self.page = page
-        self.login_page = LoginPage(page)
-        self.login_form = LoginFormComponent(page)
+    def __init__(self, login_page: LoginPage) -> None:
+        self.login_page = login_page
+        self.page = login_page.page  # Получаем page внутри класса
+        self.login_form = LoginFormComponent(self.page)
 
     @allure.step("Регистрация пользователя")
-    def register_user(self, username, password):
+    def register_user(self, username: str, password: str) -> bool:
         """
         Регистрация нового пользователя и возврат результата
 
@@ -35,7 +35,7 @@ class AuthActions:
         return self.login_form.is_success_message_displayed()
 
     @allure.step("Вход в систему")
-    def login_user(self, username, password):
+    def login_user(self, username: str, password: str) -> bool:
         """
         Авторизация пользователя и переход на главную страницу
 
@@ -57,7 +57,7 @@ class AuthActions:
         return "/main" in self.page.url
 
     @allure.step("Попытка входа с неверными данными")
-    def try_invalid_login(self, username, password):
+    def try_invalid_login(self, username: str, password: str) -> bool:
         """
         Попытка входа с несуществующими/неверными данными
 
@@ -78,7 +78,7 @@ class AuthActions:
         return self.login_form.is_error_displayed()
 
     @allure.step("Переход к регистрации")
-    def go_to_registration(self):
+    def go_to_registration(self) -> bool:
         """
         Переход со страницы входа к регистрации
 
