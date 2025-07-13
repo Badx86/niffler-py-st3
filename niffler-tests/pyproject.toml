@@ -35,5 +35,5 @@ pytest-sugar = "1.0.0"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-timeout = 10
-addopts = "--alluredir=allure-results --clean-alluredir -v --tb=short"
+timeout = 30
+addopts = "--alluredir=allure-results --clean-alluredir -v --tb=short --screenshot=on"

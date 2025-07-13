@@ -1,18 +1,21 @@
 import allure
 from .base_page import BasePage
 from playwright.sync_api import Page
+from typing import Dict, Any
+from config import Config
 
 
 class LoginPage(BasePage):
     """Страница входа в систему"""
 
-    def __init__(self, page: Page) -> None:
-        super().__init__(page)
+    def __init__(self, page: Page, environment: Dict[str, Any] = None) -> None:
+        super().__init__(page, environment)
 
     @allure.step("Открытие страницы логина")
     def open(self) -> None:
         """Переходим на страницу входа"""
-        self.navigate_to("http://auth.niffler.dc:9000/login")
+        login_url = self.get_full_url("auth_url", Config.LOGIN_ENDPOINT)
+        self.navigate_to(login_url)
 
     def is_loaded(self) -> bool:
         """Проверяем что мы действительно на странице входа"""
