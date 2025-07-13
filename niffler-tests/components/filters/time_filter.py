@@ -1,10 +1,11 @@
 import allure
+from playwright.sync_api import Page
 
 
 class TimeFilterComponent:
     """Компонент фильтра по времени для трат"""
 
-    def __init__(self, page):
+    def __init__(self, page: Page) -> None:
         self.page = page
 
         # Фильтр времени
@@ -17,12 +18,12 @@ class TimeFilterComponent:
         self.TIME_OPTION_TODAY = self.page.locator('li[data-value="TODAY"]')
 
     @allure.step("Открытие фильтра времени")
-    def open_filter(self):
+    def open_filter(self) -> None:
         """Открытие выпадающего списка фильтра времени"""
         self.TIME_FILTER_BUTTON.click()
 
     @allure.step("Выбор периода: {period}")
-    def select_period(self, period):
+    def select_period(self, period: str) -> None:
         """Выбор конкретного периода времени"""
         self.open_filter()
         if period == "ALL":
@@ -34,9 +35,11 @@ class TimeFilterComponent:
         elif period == "TODAY":
             self.TIME_OPTION_TODAY.click()
 
-    def are_all_options_visible(self):
+    def are_all_options_visible(self) -> bool:
         """Проверка что все опции фильтра времени видны"""
-        return (self.TIME_OPTION_ALL.is_visible() and
-                self.TIME_OPTION_LAST_MONTH.is_visible() and
-                self.TIME_OPTION_LAST_WEEK.is_visible() and
-                self.TIME_OPTION_TODAY.is_visible())
+        return (
+            self.TIME_OPTION_ALL.is_visible()
+            and self.TIME_OPTION_LAST_MONTH.is_visible()
+            and self.TIME_OPTION_LAST_WEEK.is_visible()
+            and self.TIME_OPTION_TODAY.is_visible()
+        )
