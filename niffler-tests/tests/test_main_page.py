@@ -33,8 +33,6 @@ class TestMainPage:
             assert statistics_title.is_visible(), "Заголовок Statistics не виден"
             assert history_title.is_visible(), "Заголовок History of Spendings не виден"
 
-            assert False, "ДЕМО ПАДЕНИЕ ДЛЯ СКРИНШОТА!"
-
     @allure.story("Проверка элемента поиска")
     def test_search_functionality(self, authenticated_page):
         """Проверяем что поиск трат работает правильно"""
