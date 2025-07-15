@@ -1,12 +1,12 @@
 from .base_page import BasePage
 from playwright.sync_api import Page
-from typing import Dict, Any
+from typing import Any
 
 
 class MainPage(BasePage):
     """Главная страница приложения после входа в систему"""
 
-    def __init__(self, page: Page, environment: Dict[str, Any] = None) -> None:
+    def __init__(self, page: Page, environment: dict[str, Any] = None) -> None:
         super().__init__(page, environment)
 
     def open(self) -> None:

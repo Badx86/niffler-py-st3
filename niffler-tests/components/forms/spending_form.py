@@ -26,13 +26,9 @@ class SpendingFormComponent:
         self.ADD_BUTTON = self.page.get_by_role("button", name="Add")
 
         # Сообщения об ошибках валидации
-        self.AMOUNT_ERROR = self.page.locator(
-            'text="Amount has to be not less then 0.01"'
-        )
+        self.AMOUNT_ERROR = self.page.locator('text="Amount has to be not less then 0.01"')
         self.CATEGORY_ERROR = self.page.locator('text="Please choose category"')
-        self.ERROR_MESSAGES = self.page.locator(
-            '.input__helper-text, span[class*="helper-text"]'
-        )
+        self.ERROR_MESSAGES = self.page.locator('.input__helper-text, span[class*="helper-text"]')
 
         # Валюты в dropdown
         self.CURRENCY_RUB = self.page.locator('li[data-value="RUB"]')
