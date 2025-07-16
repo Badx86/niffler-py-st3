@@ -1,5 +1,8 @@
+from models.data_models import UserData
 from pages.login_page import LoginPage
 from pages.main_page import MainPage
+from data_bases.spend_db import SpendDb
+from clients.spends_client import SpendsHttpClient
 from pages.spending_page import SpendingPage
 from actions.auth_actions import AuthActions
 from builders.user_builder import UserBuilder
@@ -188,7 +191,7 @@ def authenticated_page(browser, auth_storage, session_user, environment):
         try:
             # Создаем копию context_options для storage state
             storage_context_options = base_context_options.copy()
-            storage_context_options["storage_state"] = str(auth_storage)
+            storage_context_options["storage_state"] = str(auth_storage)  # type: ignore
 
             browser_context = browser.new_context(**storage_context_options)
             browser_context.set_default_timeout(timeout)
@@ -290,7 +293,39 @@ def registered_user(auth_actions, user_data):
 
 
 @pytest.fixture
-def logged_in_user(auth_actions, registered_user):
-    """Авторизация пользователя и переход на главную страницу"""
-    auth_actions.login_user(registered_user.username, registered_user.password)
-    return registered_user
+def logged_in_user(session_user) -> UserData:
+    """Используем того еж пользователя что в authenticated_page"""
+    return session_user
+
+
+# ===================
+# DB FIXTURES
+# ===================
+
+@pytest.fixture
+def auth_token(authenticated_page) -> str:
+    """Получить токен авторизации из браузера"""
+    # Способ 1: sessionStorage
+    token = authenticated_page.evaluate("() => window.sessionStorage.getItem('id_token')")
+    if token:
+        return token
+
+    # Способ 2: localStorage
+    token = authenticated_page.evaluate("() => window.localStorage.getItem('access_token')")
+    if token:
+        return token
+
+    # Способ 3: заглушка
+    return "test_token_placeholder"
+
+
+@pytest.fixture
+def spend_db(environment) -> SpendDb:
+    """Фикстура для работы с БД трат"""
+    return SpendDb(environment['spend_db_url'])
+
+
+@pytest.fixture
+def spends_client(environment, auth_token) -> SpendsHttpClient:
+    """Фикстура для HTTP клиента трат"""
+    return SpendsHttpClient(environment['gateway_url'], auth_token)

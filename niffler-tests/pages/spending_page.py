@@ -1,13 +1,13 @@
 import allure
 from .base_page import BasePage
 from playwright.sync_api import Page
-from typing import Dict, Any
+from typing import Any
 
 
 class SpendingPage(BasePage):
     """Страница расходов"""
 
-    def __init__(self, page: Page, environment: Dict[str, Any] = None) -> None:
+    def __init__(self, page: Page, environment: dict[str, Any] = None) -> None:
         super().__init__(page, environment)
 
     @allure.step("Открытие страницы добавления расходов")

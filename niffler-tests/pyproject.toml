@@ -15,10 +15,12 @@ dependencies = [
     "python-dotenv (==1.1.1)",
     "pytest-playwright (>=0.7.0,<0.8.0)",
     "allure-pytest (>=2.14.3,<3.0.0)",
-    "ruff (>=0.12.2,<0.13.0)",
     "pydantic (>=2.11.7,<3.0.0)",
     "pytest-timeout (>=2.4.0,<3.0.0)",
-
+    "psycopg2-binary (>=2.9.10,<3.0.0)",
+    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "sqlmodel (>=0.0.24,<0.0.25)",
+    "httpx (>=0.28.1,<0.29.0)",
 ]
 
 [build-system]
@@ -31,9 +33,60 @@ package-mode = false
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"
 pytest-sugar = "1.0.0"
+ruff = "^0.12.2"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
 timeout = 30
-addopts = "--alluredir=allure-results --clean-alluredir -v --tb=short --screenshot=on"
+addopts = [
+    "--alluredir", "allure-results",
+    "--clean-alluredir",
+    "-v",
+    "--tb=short",
+    "--screenshot=on"
+]
+markers = [
+    "login: tests related to login functionality",
+    "spending: tests related to spending",
+    "register: tests related to register functionality",
+    "categories: tests related to categories"
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "allure-results",
+    ".pytest_cache",
+]
+
+[tool.ruff.lint]
+unfixable = ["I001", "I002"]
+select = [
+    "E", # pycodestyle
+    "F", # pyflakes
+    "B", # bugbear
+    "UP", # pyupgrade
+    "C", # comprehensions
+    "N", # pep8-naming
+    "Q", # quotes
+]
+ignore = [
+    "E501", # line too long
+    "B008", # mutable default argument
+    "S101", # assert statement
+    "S105", # hardcoded password
+    "N815", # mixedCase variable
+    "N999", # invalid module name
+    "E722", # bare except
+    "I001", # import sorting
+]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
+line-ending = "auto"

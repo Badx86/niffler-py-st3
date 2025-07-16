@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from playwright.sync_api import Page
-from typing import Dict, Any
+from typing import Any
 import allure
 
 
@@ -9,7 +9,7 @@ class BasePage(ABC):
     Базовая страница для всех остальных страниц
     """
 
-    def __init__(self, page: Page, environment: Dict[str, Any] = None) -> None:
+    def __init__(self, page: Page, environment: dict[str, Any] = None) -> None:
         self.page = page
         self.environment = environment or {}
 
