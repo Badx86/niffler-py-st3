@@ -223,3 +223,119 @@ class TestSpending:
         with allure.step("Клик по кнопке New spending"):
             success = spending_actions.navigate_to_spending_from_main()
             assert success, "Не перешли на страницу добавления трат"
+
+
+@allure.feature("БД проверки трат")
+class TestSpendingDatabase:
+    """Тесты с проверкой данных в БД после операций UI"""
+
+    @allure.story("Создание через UI + БД проверка")
+    def test_ui_create_check_db(self, authenticated_page, spend_db, logged_in_user):
+        """Создаем трату через UI, проверяем что попала в БД с правильными данными"""
+        from actions.spending_actions import SpendingActions
+        from pages.spending_page import SpendingPage
+        from builders.spending_builder import SpendingBuilder
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with allure.step("Генерация тестовых данных"):
+            test_data = SpendingBuilder().with_random_amount(500, 600).with_random_currency().with_random_category().with_random_description().build()
+
+        with allure.step("Запоминаем начальное количество трат"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Создание траты через UI"):
+            success = spending_actions.create_spending(
+                amount=test_data.amount,
+                currency=test_data.currency,
+                category=test_data.category,
+                description=test_data.description
+            )
+            assert success, "Не удалось создать трату через UI"
+
+        with allure.step("БД проверка - трата сохранилась с правильными данными"):
+            current_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert current_count == initial_count + 1, "Счетчик трат не увеличился"
+
+            # Находим созданную трату
+            all_spends = spend_db.get_user_spends(logged_in_user.username)
+            found_spend = None
+            for spend in all_spends:
+                if spend.description == test_data.description and spend.amount == test_data.amount:
+                    found_spend = spend
+                    break
+
+            assert found_spend is not None, "Трата не найдена в БД"
+            assert found_spend.currency == test_data.currency, "Неверная валюта в БД"
+
+    @allure.story("Счетчики БД при операциях")
+    def test_spending_counters_db(self, authenticated_page, spend_db, logged_in_user):
+        """Проверяем как изменяются счетчики в БД при создании нескольких трат"""
+        from actions.spending_actions import SpendingActions
+        from pages.spending_page import SpendingPage
+        from builders.spending_builder import SpendingBuilder
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with allure.step("Генерация тестовых данных для 2 трат"):
+            test_data1 = SpendingBuilder().with_random_amount(100, 200).with_random_currency().with_random_category().with_random_description().build()
+            test_data2 = SpendingBuilder().with_random_amount(300, 400).with_random_currency().with_random_category().with_random_description().build()
+
+        with allure.step("Начальное количество"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Создаем 2 траты через UI"):
+            # Первая трата
+            success1 = spending_actions.create_spending(
+                test_data1.amount, test_data1.currency, test_data1.category, test_data1.description
+            )
+            assert success1, "Первая трата не создалась"
+
+            # Вторая трата
+            success2 = spending_actions.create_spending(
+                test_data2.amount, test_data2.currency, test_data2.category, test_data2.description
+            )
+            assert success2, "Вторая трата не создалась"
+
+        with allure.step("БД проверка - счетчик +2"):
+            final_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert final_count == initial_count + 2, f"Ожидали +2 траты, получили {final_count - initial_count}"
+
+    @allure.story("Валидация не пропускает в БД")
+    def test_validation_blocks_db(self, authenticated_page, spend_db, logged_in_user):
+        """Проверяем что невалидные данные НЕ попадают в БД"""
+        from actions.spending_actions import SpendingActions
+        from pages.spending_page import SpendingPage
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with allure.step("Начальное состояние БД"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Попытка создать невалидную трату"):
+            errors_shown = spending_actions.try_create_invalid_spending()
+            assert errors_shown, "Валидация не сработала"
+
+        with allure.step("БД проверка - невалидные данные НЕ сохранились"):
+            current_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert current_count == initial_count, "Невалидные данные попали в БД!"
+
+    @allure.story("Существующие траты в БД")
+    def test_existing_spends_in_db(self, spend_db, logged_in_user):
+        """Проверяем что можем читать существующие траты из БД"""
+
+        with allure.step("Получение всех трат пользователя"):
+            user_spends = spend_db.get_user_spends(logged_in_user.username)
+
+        with allure.step("БД проверка - структура данных корректна"):
+            # Проверяем что каждая трата имеет нужные поля
+            for spend in user_spends:
+                assert hasattr(spend, 'id'), "У траты нет ID"
+                assert hasattr(spend, 'amount'), "У траты нет суммы"
+                assert hasattr(spend, 'currency'), "У траты нет валюты"
+                assert hasattr(spend, 'description'), "У траты нет описания"
+                assert hasattr(spend, 'category_id'), "У траты нет category_id"
+                assert spend.username == logged_in_user.username, "Неверный username в трате"
