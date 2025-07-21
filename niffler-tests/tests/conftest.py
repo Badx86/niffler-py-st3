@@ -1,25 +1,27 @@
-from models.data_models import UserData
-from pages.login_page import LoginPage
-from pages.main_page import MainPage
-from data_bases.spend_db import SpendDb
+from playwright.sync_api import Browser, BrowserContext, Page
 from clients.spends_client import SpendsHttpClient
 from pages.spending_page import SpendingPage
 from actions.auth_actions import AuthActions
 from builders.user_builder import UserBuilder
+from models.data_models import UserData
+from pages.login_page import LoginPage
+from pages.main_page import MainPage
+from data_bases.spend_db import SpendDb
+from typing import Generator
 from config import Config
+from pathlib import Path
 import pytest
 import allure
 import json
 import sys
 import os
-from pathlib import Path
 
 
 # ===============================
 # HOOKS AND CONFIGURATION
 # ===============================
 
-def pytest_addoption(parser):
+def pytest_addoption(parser) -> None:
     """Добавление опций командной строки"""
     parser.addoption(
         "--env",
@@ -29,7 +31,7 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     """Настройка категорий ошибок для Allure"""
     categories = [
         {
@@ -87,14 +89,14 @@ def pytest_runtest_makereport(item, call):
 # =============================
 
 @pytest.fixture(scope="session")
-def environment(request):
+def environment(request) -> dict[str, str]:
     """Получение конфигурации окружения"""
     env_name = request.config.getoption("--env")
     return Config.get_env_config(env_name)
 
 
 @pytest.fixture(scope="session")
-def browser(playwright):
+def browser(playwright) -> Generator[Browser, None, None]:
     """Браузер с настройками из .env"""
     headless = os.getenv("HEADLESS", "true").lower() == "true"
     browser = playwright.chromium.launch(headless=headless)
@@ -103,7 +105,7 @@ def browser(playwright):
 
 
 @pytest.fixture(scope="function")
-def context(browser):
+def context(browser) -> Generator[BrowserContext, None, None]:
     """Браузер контекст с фиксированным размером окна"""
     # Таймаут из .env или дефолтное значение
     timeout = int(os.getenv("BROWSER_TIMEOUT", "30000"))
@@ -130,13 +132,91 @@ def context(browser):
     browser_context.close()
 
 
-# =================
+# ===============================
+# SHARED AUTHENTICATION
+# ===============================
+
+@pytest.fixture(scope="session")
+def shared_user() -> UserData:
+    """Пользователь для shared авторизации с timestamp для уникальности"""
+    import time
+    timestamp = int(time.time() % 100000)
+    username = f"test_user_{timestamp}"
+    return UserBuilder().with_username(username).with_password("TestPass123").build()
+
+
+@pytest.fixture(scope="session")
+def auth_state_file(shared_user: UserData) -> Path:
+    """Файл для хранения состояния авторизации"""
+    auth_file = Path(".pytest_cache") / f"auth_{shared_user.username}.json"
+    auth_file.parent.mkdir(exist_ok=True)
+    return auth_file
+
+
+@pytest.fixture(scope="function")
+def authenticated_page(
+        browser: Browser,
+        auth_state_file: Path,
+        shared_user: UserData,
+        environment: dict
+) -> Generator[Page, None, None]:
+    """Оптимизированная shared авторизация с переиспользованием auth state"""
+    timeout = int(os.getenv("BROWSER_TIMEOUT", "30000"))
+    record_video = os.getenv("RECORD_VIDEO", "false").lower() == "true"
+
+    context_options = {"viewport": {"width": 1920, "height": 1080}}
+    if record_video:
+        context_options.update({"record_video_dir": "videos/", "record_video_size": {"width": 1920, "height": 1080}})
+
+    main_url = f"{environment['frontend_url']}/main"
+
+    # Попытка переиспользования существующего auth state
+    if auth_state_file.exists():
+        file_size = auth_state_file.stat().st_size
+        if file_size > 100:
+            try:
+                ctx = browser.new_context(storage_state=str(auth_state_file), **context_options)
+                ctx.set_default_timeout(timeout)
+                page = ctx.new_page()
+                page.goto(main_url)
+
+                if "/main" in page.url:
+                    yield page
+                    ctx.close()
+                    return
+
+                ctx.close()
+            except Exception:
+                pass
+
+        auth_state_file.unlink(missing_ok=True)
+
+    # Создание нового auth state
+    ctx = browser.new_context(**context_options)
+    ctx.set_default_timeout(timeout)
+    page = ctx.new_page()
+
+    login_page = LoginPage(page, environment)
+    auth_actions = AuthActions(login_page)
+
+    try:
+        auth_actions.login_user(shared_user.username, shared_user.password)
+    except:
+        auth_actions.register_user(shared_user.username, shared_user.password)
+        auth_actions.login_user(shared_user.username, shared_user.password)
+
+    ctx.storage_state(path=str(auth_state_file))
+    yield page
+    ctx.close()
+
+
+# ===============================
 # ALLURE REPORTING
-# =================
+# ===============================
 
 @pytest.fixture(scope="session", autouse=True)
-def allure_environment(environment):
-    """Настройка информации об окружении для Allure"""
+def allure_environment(environment: dict) -> None:
+    """Настройка информации об окружении для Allure отчетов"""
     properties = [
         f"Environment={environment['frontend_url']}",
         f"Auth_URL={environment['auth_url']}",
@@ -145,7 +225,6 @@ def allure_environment(environment):
         "Browser=Chromium",
         "Framework=Playwright + pytest",
     ]
-
     os.makedirs("allure-results", exist_ok=True)
     with open("allure-results/environment.properties", "w") as f:
         for prop in properties:
@@ -153,149 +232,54 @@ def allure_environment(environment):
 
 
 # ===============================
-# SHARED AUTHENTICATION
+# PAGE FIXTURES
 # ===============================
 
-@pytest.fixture(scope="session")
-def auth_storage(tmp_path_factory):
-    """Хранилище состояния авторизации для shared auth"""
-    return tmp_path_factory.mktemp("session") / "auth_state.json"
-
-
-@pytest.fixture(scope="session")
-def session_user():
-    """Пользователь для shared авторизации (создается один раз на сессию)"""
-    return UserBuilder().with_random_credentials().build()
-
-
-@pytest.fixture(scope="function")
-def authenticated_page(browser, auth_storage, session_user, environment):
-    """Shared auth с простым fallback"""
-    timeout = int(os.getenv("BROWSER_TIMEOUT", "30000"))
-    record_video = os.getenv("RECORD_VIDEO", "false").lower() == "true"
-
-    base_context_options = {
-        "viewport": {"width": 1920, "height": 1080},
-    }
-
-    if record_video:
-        base_context_options.update(
-            {
-                "record_video_dir": "videos/",
-                "record_video_size": {"width": 1920, "height": 1080},
-            }
-        )
-
-    # Попытка с storage state
-    if auth_storage.exists():
-        try:
-            # Создаем копию context_options для storage state
-            storage_context_options = base_context_options.copy()
-            storage_context_options["storage_state"] = str(auth_storage)  # type: ignore
-
-            browser_context = browser.new_context(**storage_context_options)
-            browser_context.set_default_timeout(timeout)
-            page = browser_context.new_page()
-
-            # Используем environment для URL
-            main_url = f"{environment['frontend_url']}/main"
-            page.goto(main_url)
-
-            # Простая проверка - если не перебросило на логин = ОК
-            if "/main" in page.url:
-                yield page
-                browser_context.close()
-                return
-            browser_context.close()
-        except:
-            pass  # Любая ошибка = fresh login
-
-        # Удаляем битый storage
-        auth_storage.unlink(missing_ok=True)
-
-    # Fresh login - используем оригинальные context_options без storage_state
-    browser_context = browser.new_context(**base_context_options)
-    browser_context.set_default_timeout(timeout)
-    page = browser_context.new_page()
-
-    login_page = LoginPage(page, environment)
-    auth_actions = AuthActions(login_page)
-    auth_actions.register_user(session_user.username, session_user.password)
-    auth_actions.login_user(session_user.username, session_user.password)
-
-    browser_context.storage_state(path=str(auth_storage))
-    yield page
-    browser_context.close()
-
-
-# ==============
-# PAGE FIXTURES
-# ==============
-
 @pytest.fixture
-def login_page(page, request):
+def login_page(page: Page, environment: dict) -> LoginPage:
     """Фикстура для страницы авторизации"""
-    # Пытаемся получить environment, если есть
-    try:
-        environment = request.getfixturevalue("environment")
-    except:
-        environment = Config.get_env_config("docker")
     return LoginPage(page, environment)
 
 
 @pytest.fixture
-def main_page(page, request):
+def main_page(page: Page, environment: dict) -> MainPage:
     """Фикстура для главной страницы"""
-    # Пытаемся получить environment, если есть
-    try:
-        environment = request.getfixturevalue("environment")
-    except:
-        environment = Config.get_env_config("docker")
     return MainPage(page, environment)
 
 
 @pytest.fixture
-def spending_page(page, request):
+def spending_page(page: Page, environment: dict) -> SpendingPage:
     """Фикстура для страницы расходов"""
-    # Пытаемся получить environment, если есть
-    try:
-        environment = request.getfixturevalue("environment")
-    except:
-        environment = Config.get_env_config("docker")
     return SpendingPage(page, environment)
 
 
-# ==================
-# ACTION FIXTURES
-# ==================
+# ===============================
+# ACTION AND DATA FIXTURES
+# ===============================
 
 @pytest.fixture
-def auth_actions(login_page):
+def auth_actions(login_page: LoginPage) -> AuthActions:
     """Фикстура для действий авторизации"""
     return AuthActions(login_page)
 
 
-# ===================
-# USER DATA FIXTURES
-# ===================
-
 @pytest.fixture
-def user_data():
+def user_data() -> UserData:
     """Генерация случайных данных пользователя для каждого теста"""
     return UserBuilder().with_random_credentials().build()
 
 
 @pytest.fixture
-def registered_user(auth_actions, user_data):
+def registered_user(auth_actions: AuthActions, user_data: UserData) -> UserData:
     """Регистрация нового пользователя и возврат его данных"""
     auth_actions.register_user(user_data.username, user_data.password)
     return user_data
 
 
 @pytest.fixture
-def logged_in_user(session_user) -> UserData:
-    """Используем того еж пользователя что в authenticated_page"""
-    return session_user
+def logged_in_user(shared_user: UserData) -> UserData:
+    """Используем того же пользователя что в authenticated_page"""
+    return shared_user
 
 
 # ===================
@@ -303,29 +287,19 @@ def logged_in_user(session_user) -> UserData:
 # ===================
 
 @pytest.fixture
-def auth_token(authenticated_page) -> str:
-    """Получить токен авторизации из браузера"""
-    # Способ 1: sessionStorage
-    token = authenticated_page.evaluate("() => window.sessionStorage.getItem('id_token')")
-    if token:
-        return token
-
-    # Способ 2: localStorage
-    token = authenticated_page.evaluate("() => window.localStorage.getItem('access_token')")
-    if token:
-        return token
-
-    # Способ 3: заглушка
-    return "test_token_placeholder"
-
-
-@pytest.fixture
-def spend_db(environment) -> SpendDb:
+def spend_db(environment: dict) -> SpendDb:
     """Фикстура для работы с БД трат"""
     return SpendDb(environment['spend_db_url'])
 
 
 @pytest.fixture
-def spends_client(environment, auth_token) -> SpendsHttpClient:
-    """Фикстура для HTTP клиента трат"""
+def auth_token(authenticated_page: Page) -> str:
+    """Получить токен авторизации из браузера"""
+    token = authenticated_page.evaluate("() => window.sessionStorage.getItem('id_token')")
+    return token or "test_token_placeholder"
+
+
+@pytest.fixture
+def spends_client(environment: dict, auth_token: str) -> SpendsHttpClient:
+    """Фикстура для HTTP клиента"""
     return SpendsHttpClient(environment['gateway_url'], auth_token)
