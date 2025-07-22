@@ -26,13 +26,9 @@ class SpendingFormComponent:
         self.ADD_BUTTON = self.page.get_by_role("button", name="Add")
 
         # Сообщения об ошибках валидации
-        self.AMOUNT_ERROR = self.page.locator(
-            'text="Amount has to be not less then 0.01"'
-        )
+        self.AMOUNT_ERROR = self.page.locator('text="Amount has to be not less then 0.01"')
         self.CATEGORY_ERROR = self.page.locator('text="Please choose category"')
-        self.ERROR_MESSAGES = self.page.locator(
-            '.input__helper-text, span[class*="helper-text"]'
-        )
+        self.ERROR_MESSAGES = self.page.locator('.input__helper-text, span[class*="helper-text"]')
 
         # Валюты в dropdown
         self.CURRENCY_RUB = self.page.locator('li[data-value="RUB"]')
@@ -74,7 +70,11 @@ class SpendingFormComponent:
     @allure.step("Ввод категории: {category}")
     def fill_category(self, category: str) -> None:
         """Ввод категории"""
-        self.CATEGORY_INPUT.fill(category)
+        try:
+            self.CATEGORY_INPUT.fill(category, timeout=3000)
+        except:
+            # Если поле заблокировано - ничего не делаем
+            allure.attach("Поле категории заблокировано", name="Category Blocked")
 
     @allure.step("Ввод описания: {description}")
     def fill_description(self, description: str) -> None:
@@ -123,3 +123,8 @@ class SpendingFormComponent:
     def is_currency_dropdown_open(self) -> bool:
         """Проверка что dropdown валют открыт"""
         return self.CURRENCY_RUB.is_visible()
+
+    def is_category_input_disabled(self) -> bool:
+        """Проверка что поле ввода категории заблокировано"""
+        category_input = self.page.locator('input[placeholder="Add new category"]')
+        return category_input.is_disabled(timeout=3000)

@@ -1,10 +1,174 @@
-import allure
-import random
-from pages.spending_page import SpendingPage
-from pages.main_page import MainPage
 from components.forms.spending_form import SpendingFormComponent
 from actions.spending_actions import SpendingActions
 from builders.spending_builder import SpendingBuilder
+from exceptions import ValidationError
+from pages.main_page import MainPage
+from pages.spending_page import SpendingPage
+from sqlmodel import Session, text
+import allure
+import random
+
+
+@allure.feature("БД проверки трат")
+class TestSpendingDatabase:
+    """Тесты с проверкой данных в БД после операций UI"""
+
+    @allure.story("Создание через UI + БД проверка")
+    def test_ui_create_check_db(self, authenticated_page, spend_db, logged_in_user):
+        """Создаем трату через UI, проверяем что попала в БД с корректными данными"""
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with (allure.step("Генерация тестовых данных")):
+            test_data = SpendingBuilder().with_random_amount(500,
+                                                             600).with_random_currency() \
+                .with_random_category().with_random_description().build()
+
+        with allure.step("Запоминаем начальное количество трат"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Создание траты через UI"):
+            success = spending_actions.create_spending(
+                amount=test_data.amount,
+                currency=test_data.currency,
+                category=test_data.category,
+                description=test_data.description
+            )
+            assert success, "Не удалось создать трату через UI"
+
+        with allure.step("БД проверка - трата сохранилась с корректными данными"):
+            current_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert current_count == initial_count + 1, "Счетчик трат не увеличился"
+
+            # Находим созданную трату
+            all_spends = spend_db.get_user_spends(logged_in_user.username)
+            found_spend = None
+            for spend in all_spends:
+                if spend.description == test_data.description and spend.amount == test_data.amount:
+                    found_spend = spend
+                    break
+
+            assert found_spend is not None, "Трата не найдена в БД"
+            assert found_spend.currency == test_data.currency, "Некорректная валюта в БД"
+
+    @allure.story("Счетчики БД при операциях")
+    def test_spending_counters_db(self, authenticated_page, spend_db, logged_in_user):
+        """Проверяем как изменяются счетчики в БД при создании нескольких трат"""
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with ((allure.step("Генерация тестовых данных для 2 трат"))):
+            test_data1 = SpendingBuilder().with_random_amount(100,
+                                                              200).with_random_currency() \
+                .with_random_category().with_random_description().build()
+            test_data2 = SpendingBuilder().with_random_amount(300,
+                                                              400).with_random_currency() \
+                .with_random_category().with_random_description().build()
+
+        with allure.step("Начальное количество"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Создаем 2 траты через UI"):
+            # Первая трата
+            success1 = spending_actions.create_spending(
+                test_data1.amount, test_data1.currency, test_data1.category, test_data1.description
+            )
+            assert success1, "Первая трата не создалась"
+
+            # Вторая трата
+            success2 = spending_actions.create_spending(
+                test_data2.amount, test_data2.currency, test_data2.category, test_data2.description
+            )
+            assert success2, "Вторая трата не создалась"
+
+        with allure.step("БД проверка - счетчик +2"):
+            final_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert final_count == initial_count + 2, f"Ожидали +2 траты, получили {final_count - initial_count}"
+
+    @allure.story("Валидация не пропускает в БД")
+    def test_validation_blocks_db(self, authenticated_page, spend_db, logged_in_user):
+        """Проверяем что невалидные данные НЕ попадают в БД"""
+        from actions.spending_actions import SpendingActions
+        from pages.spending_page import SpendingPage
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with allure.step("Начальное состояние БД"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
+        with allure.step("Попытка создать невалидную трату"):
+            errors_shown = spending_actions.try_create_invalid_spending()
+            assert errors_shown, "Валидация не сработала"
+
+        with allure.step("БД проверка - невалидные данные НЕ сохранились"):
+            current_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert current_count == initial_count, "Невалидные данные попали в БД!"
+
+    @allure.story("Существующие траты в БД")
+    def test_existing_spends_in_db(self, spend_db, logged_in_user):
+        """Проверяем что можем читать существующие траты из БД"""
+
+        with allure.step("Получение всех трат пользователя"):
+            user_spends = spend_db.get_user_spends(logged_in_user.username)
+
+        with allure.step("БД проверка - структура данных корректна"):
+            # Проверяем что каждая трата имеет нужные поля
+            for spend in user_spends:
+                assert hasattr(spend, 'id'), "У траты нет ID"
+                assert hasattr(spend, 'amount'), "У траты нет суммы"
+                assert hasattr(spend, 'currency'), "У траты нет валюты"
+                assert hasattr(spend, 'description'), "У траты нет описания"
+                assert hasattr(spend, 'category_id'), "У траты нет category_id"
+                assert spend.username == logged_in_user.username, "Неверный username в трате"
+
+    @allure.story("Целостность данных БД")
+    def test_data_integrity_check(self, authenticated_page, spend_db, logged_in_user):
+        """Проверяем что БД не позволяет нарушить связи между тратами и категориями"""
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        with allure.step("Создание траты через UI"):
+            test_data = SpendingBuilder().with_amount(999).with_currency("EUR").with_category(
+                "IntegrityTestCat").with_description("Integrity test").build()
+
+            success = spending_actions.create_spending(
+                test_data.amount, test_data.currency, test_data.category, test_data.description
+            )
+            assert success, "Не удалось создать трату через UI"
+
+        with allure.step("БД проверка: найти связь трата-категория"):
+            user_spends = spend_db.get_user_spends(logged_in_user.username)
+            target_spend = None
+            for spend in user_spends:
+                if spend.description == test_data.description:
+                    target_spend = spend
+                    break
+
+            assert target_spend is not None, "Трата не найдена в БД"
+            assert target_spend.category_id is not None, "У траты нет category_id"
+
+        with allure.step("КРИТИЧНО: Проверка foreign key constraint"):
+
+            with Session(spend_db.engine) as session:
+                # Пытаемся нарушить целостность данных - удалить категорию при существующих тратах
+                constraint_works = False
+                try:
+                    session.exec(text(f"DELETE FROM category WHERE id = '{target_spend.category_id}'"))  # type: ignore
+                    session.commit()
+                except Exception as e:
+                    constraint_works = True
+                    allure.attach(f"Foreign key constraint защитил данные: {e}", name="DB Protection")
+
+                assert constraint_works, "БД не защищает от нарушения целостности данных"
+
+        with allure.step("БД проверка: трата сохранилась после попытки нарушения"):
+            surviving_spend = spend_db.get_spend_by_id(target_spend.id)
+            assert surviving_spend is not None, "Неожиданное удаление траты из БД"
+            assert surviving_spend.category_id == target_spend.category_id, "category_id поврежден"
 
 
 @allure.feature("Добавление расходов/трат")
@@ -20,15 +184,15 @@ class TestSpending:
         spending_page.open()
 
         with allure.step("Проверка что находимся на странице добавления трат"):
-            assert (spending_page.is_loaded()), f"Не на странице трат. URL: {authenticated_page.url}"
+            assert spending_page.is_loaded(), f"Не на странице трат. URL: {authenticated_page.url}"
 
         with allure.step("Проверка основных элементов формы"):
             assert spending_form.PAGE_TITLE.is_visible(), "Заголовок не виден"
             assert spending_form.AMOUNT_INPUT.is_visible(), "Поле Amount не видно"
-            assert (spending_form.CURRENCY_DROPDOWN.is_visible()), "Dropdown Currency не виден"
+            assert spending_form.CURRENCY_DROPDOWN.is_visible(), "Dropdown Currency не виден"
             assert spending_form.CATEGORY_INPUT.is_visible(), "Поле Category не видно"
             assert spending_form.DATE_INPUT.is_visible(), "Поле Date не видно"
-            assert (spending_form.DESCRIPTION_INPUT.is_visible()), "Поле Description не видно"
+            assert spending_form.DESCRIPTION_INPUT.is_visible(), "Поле Description не видно"
 
         with allure.step("Проверка кнопок"):
             assert spending_form.CANCEL_BUTTON.is_visible(), "Кнопка Cancel не видна"
@@ -74,7 +238,7 @@ class TestSpending:
             assert spending_form.is_calendar_visible(), "Календарь не открылся"
 
             calendar_month = spending_form.get_calendar_month_locator()
-            assert (calendar_month.is_visible()), f"Заголовок месяца {spending_form.get_current_month_year()} не виден"
+            assert calendar_month.is_visible(), f"Заголовок месяца {spending_form.get_current_month_year()} не виден"
 
     @allure.story("Проверка значений по умолчанию")
     def test_default_values(self, authenticated_page):
@@ -90,21 +254,21 @@ class TestSpending:
             expected_date = spending_form.get_current_date_formatted()
             actual_date = spending_form.get_date_value()
 
-            assert (actual_date == expected_date), (f"Дефолтная дата неверная. "
-                                                    f"Ожидали: {expected_date}, получили: {actual_date}")
-            assert (spending_form.get_description_placeholder() == "Type something"), "Неверный placeholder"
+            assert actual_date == expected_date, (f"Дефолтная дата неверная. "
+                                                  f"Ожидали: {expected_date}, получили: {actual_date}")
+            assert spending_form.get_description_placeholder() == "Type something", "Неверный placeholder"
 
     @allure.story("Создание валидной траты")
-    def test_valid_spending_creation(self, authenticated_page):
+    def test_valid_spending_creation(self, authenticated_page, spend_db, logged_in_user):
         """Проверяем создание траты с валидными данными"""
         spending_page = SpendingPage(authenticated_page)
         spending_actions = SpendingActions(spending_page)
         spending_data = (
             SpendingBuilder()
-            .with_amount(1500)
+            .with_random_amount(1000, 2000)
             .with_random_currency()
-            .with_category("Food")
-            .with_description("Lunch at restaurant")
+            .with_random_category()
+            .with_random_description()
             .build()
         )
 
@@ -114,8 +278,30 @@ class TestSpending:
             spending_data.category,
             spending_data.description,
         )
-
         assert success, "Не удалось создать трату"
+
+        with allure.step("БД проверка - данные сохранились"):
+            from sqlmodel import Session, select
+            from models.data_models import Spend, Category
+
+            with Session(spend_db.engine) as session:
+                # JOIN проверяет что найденная трата действительно привязана к той категории, что мы создали через UI
+                statement = (
+                    select(Spend)
+                    .join(Category, Spend.category_id == Category.id)  # type: ignore
+                    .where(
+                        Spend.amount == spending_data.amount,
+                        Spend.description == spending_data.description,
+                        Category.name == spending_data.category
+                    )
+                )
+
+                found_spends = session.exec(statement).all()
+                assert len(found_spends) > 0, f"Трата с категорией '{spending_data.category}' не найдена в БД"
+
+                test_spend = found_spends[-1]
+                assert test_spend.amount == spending_data.amount
+                assert test_spend.description == spending_data.description
 
     @allure.story("Кнопка отмены")
     def test_cancel_button(self, authenticated_page):
@@ -127,14 +313,21 @@ class TestSpending:
         assert success, "Cancel не вернул на главную страницу"
 
     @allure.story("Валидация обязательных полей")
-    def test_required_fields(self, authenticated_page):
+    def test_required_fields(self, authenticated_page, spend_db, logged_in_user):
         """Проверяем валидацию при незаполненных обязательных полях"""
         spending_page = SpendingPage(authenticated_page)
         spending_actions = SpendingActions(spending_page)
 
+        with allure.step("Запоминаем начальное состояние БД"):
+            initial_count = len(spend_db.get_user_spends(logged_in_user.username))
+
         with allure.step("Попытка сохранения с дефолтными значениями (amount=0, пустая category)"):
             errors_shown = spending_actions.try_create_invalid_spending()
             assert errors_shown, "Форма пропустила валидацию пустых полей"
+
+        with allure.step("БД проверка - невалидные данные не сохранились"):
+            current_count = len(spend_db.get_user_spends(logged_in_user.username))
+            assert current_count == initial_count, "Невалидные данные попали в БД!"
 
         with allure.step("Исправление ошибок"):
             success = spending_actions.fix_validation_errors()
@@ -153,13 +346,13 @@ class TestSpending:
             assert spending_form.get_amount_value() == "0", "Не принимает значение 0"
 
             spending_form.fill_amount(999.99)
-            assert ("999.99" in spending_form.get_amount_value()), "Не принимает дробные числа"
+            assert "999.99" in spending_form.get_amount_value(), "Не принимает дробные числа"
 
             spending_form.fill_amount(1000000)
-            assert ("1000000" in spending_form.get_amount_value()), "Не принимает большие числа"
+            assert "1000000" in spending_form.get_amount_value(), "Не принимает большие числа"
 
     @allure.story("Ввод категории")
-    def test_category_input(self, authenticated_page):
+    def test_category_input(self, authenticated_page, spends_client):
         """Проверяем ввод новой категории"""
         spending_page = SpendingPage(authenticated_page)
         spending_form = SpendingFormComponent(authenticated_page)
@@ -171,7 +364,16 @@ class TestSpending:
 
             for category in test_categories:
                 spending_form.fill_category(category)
-                assert (spending_form.CATEGORY_INPUT.input_value() == category), f"Категория {category} не сохранилась"
+                assert spending_form.CATEGORY_INPUT.input_value() == category, f"Категория {category} не сохранилась"
+
+        with allure.step("Очистка тестовых категорий"):
+            try:
+                categories = spends_client.get_categories()
+                test_category_ids = [c.id for c in categories if c.category in test_categories]
+                if test_category_ids:
+                    spends_client.remove_categories(test_category_ids)
+            except Exception as e:
+                allure.attach(f"Ошибка очистки: {str(e)}", name="Cleanup error")
 
     @allure.story("Навигация на страницу трат")
     def test_navigation_to_spending(self, authenticated_page):
@@ -185,3 +387,89 @@ class TestSpending:
         with allure.step("Клик по кнопке New spending"):
             success = spending_actions.navigate_to_spending_from_main()
             assert success, "Не перешли на страницу добавления трат"
+
+    @allure.story("Соответствие данных UI после создания")
+    def test_spending_ui_data_consistency(self, authenticated_page):
+        """Проверяем что данные на главной странице соответствуют введенным при создании"""
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+        main_page = MainPage(authenticated_page)
+
+        with allure.step("Создание траты с уникальной категорией"):
+            unique_category = f"UITest{random.randint(1000, 9999)}"
+
+            test_data = (
+                SpendingBuilder()
+                .with_random_amount(1000, 5000)
+                .with_random_currency()
+                .with_category(unique_category)
+                .with_random_description()
+                .build()
+            )
+
+            success = spending_actions.create_spending(
+                test_data.amount,
+                test_data.currency,
+                test_data.category,
+                test_data.description
+            )
+            assert success, "Не удалось создать трату"
+
+        with allure.step("Проверка на главной странице - данные соответствуют введенным"):
+            main_page.go_to_main()
+            authenticated_page.wait_for_timeout(2000)
+
+            # Найти созданную трату по категории
+            spending_data = main_page.find_spending_by_category(unique_category)
+            assert spending_data is not None, f"Трата с категорией '{unique_category}' не найдена в таблице"
+
+            # Проверяем соответствие данных
+            assert str(test_data.amount) in spending_data["amount"], \
+                f"Некорректная сумма в UI: {spending_data['amount']}"
+
+            # Проверяем валюту по символу
+            currency_symbols = {"RUB": "₽", "USD": "$", "EUR": "€", "KZT": "₸"}
+            expected_symbol = currency_symbols.get(test_data.currency, test_data.currency)
+            assert expected_symbol in spending_data["amount"], f"Некорректная валюта в UI: {spending_data['amount']}"
+
+            assert spending_data["category"] == test_data.category, \
+                f"Некорректная категория в UI: {spending_data['category']}"
+
+    @allure.story("Лимит категорий - блокировка поля ввода после 8 трат")
+    def test_category_input_limit_after_8_spendings(self, authenticated_page):
+        """После 8 трат поле ВВОДА новых категорий блокируется"""
+
+        spending_page = SpendingPage(authenticated_page)
+        spending_actions = SpendingActions(spending_page)
+
+        currencies = ["RUB", "USD", "EUR", "KZT"]
+
+        with allure.step("Создание 8 трат - по 2 на каждую валюту"):
+            for i, currency in enumerate(currencies):
+                try:
+                    # Первая трата для валюты
+                    success1 = spending_actions.create_spending(
+                        amount=100 + i * 10,
+                        currency=currency,
+                        category=f"LimitCategory{i * 2 + 1}",
+                        description=f"Limit test spending {i * 2 + 1}"
+                    )
+                    assert success1, f"Не удалось создать трату {i * 2 + 1}"
+
+                    # Вторая трата для валюты
+                    success2 = spending_actions.create_spending(
+                        amount=200 + i * 10,
+                        currency=currency,
+                        category=f"LimitCategory{i * 2 + 2}",
+                        description=f"Limit test spending {i * 2 + 2}"
+                    )
+                    assert success2, f"Не удалось создать трату {i * 2 + 2}"
+
+                except ValidationError as e:
+                    allure.attach(f"Лимит достигнут: {str(e)}", name="Limit Reached")
+                    break
+
+        with allure.step("Проверка блокировки поля ввода новых категорий"):
+            limit_status = spending_actions.check_category_input_limit()
+            assert limit_status["category_input_disabled"], "Поле НЕ заблокировано после достижения лимита!"
+            allure.attach("Лимит 8 категорий достигнут - поле ввода заблокировано", name="Category Input Limit")
