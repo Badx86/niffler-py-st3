@@ -1,4 +1,6 @@
 from typing import Sequence
+
+import allure
 from sqlalchemy import create_engine, Engine
 from sqlmodel import Session, select
 from models.data_models import Category, Spend
@@ -12,6 +14,7 @@ class SpendDb:
         except Exception as e:
             raise DatabaseError(f"Не удалось подключиться к БД: {str(e)}", operation="connect")
 
+    @allure.step("БД: Получение категорий пользователя '{username}'")
     def get_user_categories(self, username: str) -> Sequence[Category]:
         try:
             with Session(self.engine) as session:
@@ -24,6 +27,7 @@ class SpendDb:
                 operation="get_categories"
             )
 
+    @allure.step("БД: Получение всех трат пользователя '{username}'")
     def get_user_spends(self, username: str) -> Sequence[Spend]:
         """Получить все траты пользователя"""
         try:
@@ -37,6 +41,7 @@ class SpendDb:
                 operation="get_spends"
             )
 
+    @allure.step("БД: Удаление категории с ID '{category_id}'")
     def delete_category(self, category_id: str, username: str = None):
         try:
             with Session(self.engine) as session:
@@ -59,6 +64,7 @@ class SpendDb:
                 operation="delete_category"
             )
 
+    @allure.step("БД: Удаление траты с ID '{spend_id}'")
     def delete_spend(self, spend_id: str, username: str = None):
         """Удалить трату по ID"""
         try:
@@ -82,6 +88,7 @@ class SpendDb:
                 operation="delete_spend"
             )
 
+    @allure.step("БД: Получение траты по ID '{spend_id}'")
     def get_spend_by_id(self, spend_id: str) -> Spend | None:
         """Получить трату по ID"""
         try:

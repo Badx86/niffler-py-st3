@@ -3,11 +3,12 @@ from clients.spends_client import SpendsHttpClient
 from pages.spending_page import SpendingPage
 from actions.auth_actions import AuthActions
 from builders.user_builder import UserBuilder
+from pytest import FixtureDef, FixtureRequest, Item
 from models.data_models import UserData
 from pages.login_page import LoginPage
 from pages.main_page import MainPage
 from data_bases.spend_db import SpendDb
-from typing import Generator
+from typing import Any, Generator
 from config import Config
 from pathlib import Path
 import pytest
@@ -15,6 +16,7 @@ import allure
 import json
 import sys
 import os
+import time # Added for shared_user timestamp
 
 
 # ===============================
@@ -82,6 +84,28 @@ def pytest_runtest_makereport(item, call):
                         name="video",
                         attachment_type=allure.attachment_type.WEBM,
                     )
+
+
+def allure_logger(config):
+    """Получение Allure логгера"""
+    listener = config.pluginmanager.get_plugin("allure_listener")
+    return listener.allure_logger
+
+
+@pytest.hookimpl(hookwrapper=True, trylast=True)
+def pytest_runtest_call(item):
+    """Автоматическое название тестов в Allure"""
+    yield
+    allure.dynamic.title(" ".join(item.name.split("_")[1:]).title())
+
+
+@pytest.hookimpl(hookwrapper=True, trylast=True)
+def pytest_fixture_setup(fixturedef: FixtureDef, request: FixtureRequest):
+    yield
+    logger = allure_logger(request.config)
+    item = logger.get_last_item()
+    scope_letter = fixturedef.scope[0].upper()
+    item.name = f"[{scope_letter}]" + " ".join(fixturedef.argname.split("_")).title()
 
 
 # =============================
