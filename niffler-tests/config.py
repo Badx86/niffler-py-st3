@@ -25,7 +25,7 @@ class Config:
             "spend_db_url": f"postgresql+psycopg2://postgres:{os.getenv('DB_PASSWORD', 'secret')}"
                             f"@niffler-all-db:5432/niffler-spend",
             # Параметры для OAuth
-            "token_url": "http://auth.niffler.dc:9000/oauth/token",
+            "token_url": "http://auth.niffler.dc:9000/oauth2/token",
             "client_id": "niffler-client",
             "client_secret": os.getenv("CLIENT_SECRET", "secret")
         },
@@ -36,7 +36,7 @@ class Config:
             "spend_db_url": f"postgresql+psycopg2://postgres:{os.getenv('DB_PASSWORD', 'secret')}"
                             f"@{os.getenv('STAGING_DB_HOST', 'staging-db')}:5432/niffler-spend",
             # Параметры для OAuth
-            "token_url": f"https://{os.getenv('STAGING_AUTH_HOST', 'auth.niffler-stage.qa.guru')}/oauth/token",
+            "token_url": f"https://{os.getenv('STAGING_AUTH_HOST', 'auth.niffler-stage.qa.guru')}/oauth2/token",
             "client_id": "niffler-client",
             "client_secret": os.getenv("CLIENT_SECRET", "secret")
         },
