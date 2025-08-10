@@ -23,14 +23,22 @@ class Config:
             "frontend_url": "http://frontend.niffler.dc",
             "gateway_url": "http://gateway.niffler.dc:8090",
             "spend_db_url": f"postgresql+psycopg2://postgres:{os.getenv('DB_PASSWORD', 'secret')}"
-                            f"@niffler-all-db:5432/niffler-spend"
+                            f"@niffler-all-db:5432/niffler-spend",
+            # Параметры для OAuth
+            "token_url": "http://auth.niffler.dc:9000/oauth/token",
+            "client_id": "niffler-client",
+            "client_secret": os.getenv("CLIENT_SECRET", "secret")
         },
         "staging": {
             "auth_url": f"https://{os.getenv('STAGING_AUTH_HOST', 'auth.niffler-stage.qa.guru')}",
             "frontend_url": f"https://{os.getenv('STAGING_FRONTEND_HOST', 'niffler-stage.qa.guru')}",
             "gateway_url": f"https://{os.getenv('STAGING_API_HOST', 'api.niffler-stage.qa.guru')}",
             "spend_db_url": f"postgresql+psycopg2://postgres:{os.getenv('DB_PASSWORD', 'secret')}"
-                            f"@{os.getenv('STAGING_DB_HOST', 'staging-db')}:5432/niffler-spend"
+                            f"@{os.getenv('STAGING_DB_HOST', 'staging-db')}:5432/niffler-spend",
+            # Параметры для OAuth
+            "token_url": f"https://{os.getenv('STAGING_AUTH_HOST', 'auth.niffler-stage.qa.guru')}/oauth/token",
+            "client_id": "niffler-client",
+            "client_secret": os.getenv("CLIENT_SECRET", "secret")
         },
     }
 
@@ -55,11 +63,17 @@ class Config:
         frontend_url_from_env = os.getenv("FRONTEND_BASE_URL")
         gateway_url_from_env = os.getenv("GATEWAY_URL")
         spend_db_url_from_env = os.getenv("SPEND_DB_URL")
+        token_url_from_env = os.getenv("TOKEN_URL")
+        client_id_from_env = os.getenv("CLIENT_ID")
+        client_secret_from_env = os.getenv("CLIENT_SECRET")
 
         # Если в .env есть URLs - используем их, иначе дефолтные
         return {
-            "auth_url": auth_url_from_env or default_config["auth_url"],
-            "frontend_url": frontend_url_from_env or default_config["frontend_url"],
-            "gateway_url": gateway_url_from_env or default_config["gateway_url"],
-            "spend_db_url": spend_db_url_from_env or default_config["spend_db_url"],
+            "auth_url": auth_url_from_env or default_config.get("auth_url"),
+            "frontend_url": frontend_url_from_env or default_config.get("frontend_url"),
+            "gateway_url": gateway_url_from_env or default_config.get("gateway_url"),
+            "spend_db_url": spend_db_url_from_env or default_config.get("spend_db_url"),
+            "token_url": token_url_from_env or default_config.get("token_url"),
+            "client_id": client_id_from_env or default_config.get("client_id"),
+            "client_secret": client_secret_from_env or default_config.get("client_secret"),
         }

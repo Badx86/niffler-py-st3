@@ -4,14 +4,10 @@ from models.data_models import Category, Spend, SpendAdd
 
 
 class SpendsHttpClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, base_url: str, session: requests.Session):
+
         self.base_url = base_url
-        self.session = requests.session()
-        self.session.headers.update({
-            'Accept': 'application/json',
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        })
+        self.session = session
 
     def _make_request(self, method: str, endpoint: str, **kwargs):
         """Базовый метод для HTTP запросов с attachments"""

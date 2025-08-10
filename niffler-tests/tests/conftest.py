@@ -1,14 +1,15 @@
 from playwright.sync_api import Browser, BrowserContext, Page
 from clients.spends_client import SpendsHttpClient
+from clients.auth_session import OAuthSession
 from pages.spending_page import SpendingPage
 from actions.auth_actions import AuthActions
 from builders.user_builder import UserBuilder
-from pytest import FixtureDef, FixtureRequest, Item
+from pytest import FixtureDef, FixtureRequest
 from models.data_models import UserData
 from pages.login_page import LoginPage
 from pages.main_page import MainPage
 from data_bases.spend_db import SpendDb
-from typing import Any, Generator
+from typing import Generator
 from config import Config
 from pathlib import Path
 import pytest
@@ -118,7 +119,8 @@ def environment(request) -> dict[str, str]:
     with allure.step("[S] Get Environment Configuration"):
         env_name = request.config.getoption("--env")
         config = Config.get_env_config(env_name)
-        allure.attach(json.dumps(config, indent=2), name="Environment Config", attachment_type=allure.attachment_type.JSON)
+        allure.attach(json.dumps(config, indent=2), name="Environment Config",
+                      attachment_type=allure.attachment_type.JSON)
         return config
 
 
@@ -158,7 +160,8 @@ def context(browser) -> Generator[BrowserContext, None, None]:
 
         browser_context = browser.new_context(**context_options)
         browser_context.set_default_timeout(timeout)
-        allure.attach(json.dumps(context_options, indent=2), name="Context Options", attachment_type=allure.attachment_type.JSON)
+        allure.attach(json.dumps(context_options, indent=2), name="Context Options",
+                      attachment_type=allure.attachment_type.JSON)
         yield browser_context
     with allure.step("[F] Close Browser Context"):
         browser_context.close()
@@ -203,7 +206,8 @@ def authenticated_page(
 
         context_options = {"viewport": {"width": 1920, "height": 1080}}
         if record_video:
-            context_options.update({"record_video_dir": "videos/", "record_video_size": {"width": 1920, "height": 1080}})
+            context_options.update(
+                {"record_video_dir": "videos/", "record_video_size": {"width": 1920, "height": 1080}})
 
         main_url = f"{environment['frontend_url']}/main"
 
@@ -211,7 +215,7 @@ def authenticated_page(
         if auth_state_file.exists():
             with allure.step("Attempt to reuse existing auth state"):
                 file_size = auth_state_file.stat().st_size
-                if file_size > 100: # Basic check for non-empty file
+                if file_size > 100:  # Basic check for non-empty file
                     try:
                         ctx = browser.new_context(storage_state=str(auth_state_file), **context_options)
                         ctx.set_default_timeout(timeout)
@@ -224,14 +228,15 @@ def authenticated_page(
                             ctx.close()
                             return
                         else:
-                            allure.attach("Existing auth state did not lead to main page, retrying.", name="Auth State Reuse Failed")
+                            allure.attach("Existing auth state did not lead to main page, retrying.",
+                                          name="Auth State Reuse Failed")
                             ctx.close()
                     except Exception as e:
                         allure.attach(f"Error reusing auth state: {e}", name="Auth State Reuse Error")
-                        pass # Fall through to new auth state creation
+                        pass  # Fall through to new auth state creation
 
             if auth_state_file.exists():
-                auth_state_file.unlink(missing_ok=True) # Clean up invalid state
+                auth_state_file.unlink(missing_ok=True)  # Clean up invalid state
 
         # Создание нового auth state
         with allure.step("Create new authentication state"):
@@ -246,7 +251,8 @@ def authenticated_page(
                 auth_actions.login_user(shared_user.username, shared_user.password)
                 allure.attach("Logged in new user.", name="Login Status")
             except Exception as e:
-                allure.attach(f"Login failed: {e}. Attempting registration and login.", name="Login Failed, Registering")
+                allure.attach(f"Login failed: {e}. Attempting registration and login.",
+                              name="Login Failed, Registering")
                 auth_actions.register_user(shared_user.username, shared_user.password)
                 auth_actions.login_user(shared_user.username, shared_user.password)
                 allure.attach("Registered and logged in new user.", name="Registration Status")
@@ -279,7 +285,8 @@ def allure_environment(environment: dict) -> None:
         with open(env_props_path, "w") as f:
             for prop in properties:
                 f.write(f"{prop}\n")
-        allure.attach("\n".join(properties), name="Allure Environment Properties", attachment_type=allure.attachment_type.TEXT)
+        allure.attach("\n".join(properties), name="Allure Environment Properties",
+                      attachment_type=allure.attachment_type.TEXT)
         allure.attach(f"Environment properties written to: {env_props_path}", name="Allure Environment Setup")
 
 
@@ -289,22 +296,16 @@ def allure_environment(environment: dict) -> None:
 
 @pytest.fixture
 def login_page(page: Page, environment: dict) -> LoginPage:
-    """Фикстура для страницы авторизации"""
-    # [F] prefix for function scope from pytest_fixture_setup hook should handle this
     return LoginPage(page, environment)
 
 
 @pytest.fixture
 def main_page(page: Page, environment: dict) -> MainPage:
-    """Фикстура для главной страницы"""
-    # [F] prefix for function scope from pytest_fixture_setup hook should handle this
     return MainPage(page, environment)
 
 
 @pytest.fixture
 def spending_page(page: Page, environment: dict) -> SpendingPage:
-    """Фикстура для страницы расходов"""
-    # [F] prefix for function scope from pytest_fixture_setup hook should handle this
     return SpendingPage(page, environment)
 
 
@@ -314,21 +315,16 @@ def spending_page(page: Page, environment: dict) -> SpendingPage:
 
 @pytest.fixture
 def auth_actions(login_page: LoginPage) -> AuthActions:
-    """Фикстура для действий авторизации"""
-    # [F] prefix for function scope from pytest_fixture_setup hook should handle this
     return AuthActions(login_page)
 
 
 @pytest.fixture
 def user_data() -> UserData:
-    """Генерация случайных данных пользователя для каждого теста"""
-    # [F] prefix for function scope from pytest_fixture_setup hook should handle this
     return UserBuilder().with_random_credentials().build()
 
 
 @pytest.fixture
 def registered_user(auth_actions: AuthActions, user_data: UserData) -> UserData:
-    """Регистрация нового пользователя и возврат его данных"""
     with allure.step("[F] Register New User"):
         auth_actions.register_user(user_data.username, user_data.password)
         allure.attach(f"Registered user: {user_data.username}", name="Registered User Info")
@@ -337,44 +333,41 @@ def registered_user(auth_actions: AuthActions, user_data: UserData) -> UserData:
 
 @pytest.fixture
 def logged_in_user(shared_user: UserData) -> UserData:
-    """Используем того же пользователя что в authenticated_page"""
     with allure.step("[F] Use Logged In Shared User"):
         allure.attach(f"Using shared user: {shared_user.username}", name="Logged In User Info")
         return shared_user
 
 
 # ===================
-# DB FIXTURES
+# DB AND API FIXTURES
 # ===================
 
 @pytest.fixture
 def spend_db(environment: dict) -> SpendDb:
-    """Фикстура для работы с БД трат"""
     with allure.step("[F] Connect to Spend Database"):
         db = SpendDb(environment['spend_db_url'])
         allure.attach(f"Connected to DB: {environment['spend_db_url']}", name="DB Connection")
         return db
 
 
-@pytest.fixture
-def auth_token(authenticated_page: Page) -> str:
-    """Получить токен авторизации из браузера"""
-    with allure.step("[F] Retrieve Auth Token"):
-        token = authenticated_page.evaluate("() => window.localStorage.getItem('id_token')")
-
-        if token:
-            masked_token = f"{token[:10]}...{token[-10:]}"
-            allure.attach(masked_token, name="Auth Token (masked)", attachment_type=allure.attachment_type.TEXT)
-        else:
-            allure.attach("Token not found", name="Auth Token Status")
-
-        return token or "test_token_placeholder"
+@pytest.fixture(scope="session")
+def oauth_session(environment: dict) -> OAuthSession:
+    """Создает одну OAuth-сессию для всех тестов"""
+    with allure.step("[S] Создание и настройка OAuth сессии"):
+        return OAuthSession(
+            token_url=environment["token_url"],
+            client_id=environment["client_id"],
+            client_secret=environment["client_secret"]
+        )
 
 
 @pytest.fixture
-def spends_client(environment: dict, auth_token: str) -> SpendsHttpClient:
-    """Фикстура для HTTP клиента"""
-    with allure.step("[F] Initialize Spends HTTP Client"):
-        client = SpendsHttpClient(environment['gateway_url'], auth_token)
+def spends_client(environment: dict, oauth_session: OAuthSession) -> SpendsHttpClient:
+    """
+    Фикстура для HTTP клиента, которая теперь использует OAuth-сессию
+    вместо токена, извлеченного из браузера
+    """
+    with allure.step("[F] Initialize Spends HTTP Client with OAuth"):
+        client = SpendsHttpClient(environment['gateway_url'], oauth_session)
         allure.attach(f"API Base URL: {environment['gateway_url']}", name="API Client Info")
         return client
