@@ -21,6 +21,7 @@ dependencies = [
     "sqlalchemy (>=2.0.41,<3.0.0)",
     "sqlmodel (>=0.0.24,<0.0.25)",
     "httpx (>=0.28.1,<0.29.0)",
+    "pkce (>=1.0.3,<2.0.0)",
 ]
 
 [build-system]
